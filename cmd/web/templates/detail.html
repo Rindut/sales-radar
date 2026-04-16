@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>{{if .Lead.Company}}{{.Lead.Company}}{{else}}Lead #{{.Lead.ID}}{{end}} — Sales Radar</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+	<style>
+		:root {
+			--font-sans: "Inter", system-ui, -apple-system, sans-serif;
+			--text-ink: #0f172a;
+			--text-label: #64748b;
+			--text-muted: #64748b;
+			--primary: #216ab7;
+			--primary-soft: #eaf3fb;
+			--primary-hover: #1b5a9b;
+			--border: #e2e8f0;
+			--bg-card: #ffffff;
+			--radius: 10px;
+			--badge-success-bg: #dcfce7;
+			--badge-success-fg: #166534;
+			--badge-success-border: #86efac;
+			--badge-warning-bg: #fef3c7;
+			--badge-warning-fg: #92400e;
+			--badge-warning-border: #fcd34d;
+			--badge-danger-bg: #fee2e2;
+			--badge-danger-fg: #991b1b;
+			--badge-danger-border: #fecaca;
+			--badge-info-bg: #dbeafe;
+			--badge-info-fg: #1e40af;
+			--badge-info-border: #93c5fd;
+			--badge-neutral-bg: #e2e8f0;
+			--badge-neutral-fg: #334155;
+			--badge-neutral-border: #cbd5e1;
+		}
+		body {
+			font-family: var(--font-sans);
+			margin: 0;
+			padding: 1.25rem 1.5rem 2rem;
+			color: var(--text-ink);
+			max-width: 640px;
+			font-size: 14px;
+			line-height: 1.55;
+			-webkit-font-smoothing: antialiased;
+			background: #f8fafc;
+		}
+		.back { margin-bottom: 1rem; font-size: 14px; }
+		.back a { color: var(--primary); font-weight: 500; text-decoration: none; }
+		.back a:hover { text-decoration: underline; }
+		h1 {
+			margin: 0 0 0.25rem;
+			font-size: 24px;
+			font-weight: 700;
+			line-height: 1.2;
+			color: var(--text-ink);
+		}
+		.hero-domain {
+			font-size: 14px;
+			color: var(--text-label);
+			word-break: break-all;
+			margin-bottom: 1rem;
+		}
+		.suggested-action {
+			margin-bottom: 1.1rem;
+			padding: 0.65rem 0.75rem;
+			background: #f8fafc;
+			border: 1px solid var(--border);
+			border-radius: 10px;
+		}
+		.suggested-action__title {
+			margin: 0 0 0.35rem;
+			font-size: 11px;
+			font-weight: 700;
+			letter-spacing: 0.06em;
+			text-transform: uppercase;
+			color: var(--text-label);
+		}
+		.suggested-action__body {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: 0.35rem 0.5rem;
+		}
+		.icp-badge,
+		.suggested-action__badge {
+			display: inline-block;
+			padding: 0.22rem 0.6rem;
+			border-radius: 999px;
+			font-size: 12px;
+			font-weight: 700;
+			letter-spacing: 0.02em;
+			line-height: 1.3;
+			border: 1px solid transparent;
+			user-select: none;
+			pointer-events: none;
+		}
+		.suggested-action__badge--contact {
+			background: var(--badge-success-bg);
+			color: var(--badge-success-fg);
+			border-color: var(--badge-success-border);
+		}
+		.suggested-action__badge--research {
+			background: var(--badge-info-bg);
+			color: var(--badge-info-fg);
+			border-color: var(--badge-info-border);
+		}
+		.suggested-action__badge--ignore {
+			background: var(--badge-neutral-bg);
+			color: var(--badge-neutral-fg);
+			border-color: var(--badge-neutral-border);
+		}
+		.suggested-action__reason {
+			margin: 0.45rem 0 0;
+			font-size: 13px;
+			font-weight: 500;
+			line-height: 1.45;
+			color: var(--text-muted);
+		}
+		.suggested-action__reason-label {
+			font-weight: 600;
+			color: var(--text-label);
+			margin-right: 0.35rem;
+		}
+		.suggested-action__help-wrap {
+			position: relative;
+			display: inline-flex;
+			align-items: center;
+			align-self: center;
+		}
+		.suggested-action__help-btn {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 22px;
+			height: 22px;
+			margin: 0;
+			padding: 0;
+			border: none;
+			background: transparent;
+			color: #94a3b8;
+			border-radius: 999px;
+			cursor: pointer;
+			line-height: 1;
+			transition: color 0.15s, background 0.15s;
+		}
+		.suggested-action__help-btn:hover,
+		.suggested-action__help-btn:focus-visible {
+			color: #64748b;
+			background: rgba(148, 163, 184, 0.22);
+			outline: none;
+		}
+		.suggested-action__help-ico {
+			font-size: 11px;
+			font-weight: 700;
+			font-style: italic;
+			font-family: Georgia, "Times New Roman", serif;
+			line-height: 1;
+		}
+		.suggested-action__help-popover {
+			position: absolute;
+			z-index: 50;
+			left: 0;
+			top: calc(100% + 8px);
+			width: min(300px, calc(100vw - 2rem));
+			max-height: min(70vh, 420px);
+			overflow-y: auto;
+			padding: 0.65rem 0.7rem 0.75rem;
+			background: #fff;
+			border: 1px solid var(--border);
+			border-radius: 10px;
+			box-shadow: 0 10px 40px rgba(15, 23, 42, 0.12);
+			opacity: 0;
+			visibility: hidden;
+			transform: translateY(-6px);
+			transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s;
+			pointer-events: none;
+		}
+		.suggested-action__help-wrap:hover .suggested-action__help-popover,
+		.suggested-action__help-wrap:focus-within .suggested-action__help-popover,
+		.suggested-action__help-wrap.is-open .suggested-action__help-popover {
+			opacity: 1;
+			visibility: visible;
+			transform: translateY(0);
+			pointer-events: auto;
+		}
+		.suggested-action__help-intro {
+			margin: 0 0 0.45rem;
+			font-size: 11px;
+			font-weight: 700;
+			letter-spacing: 0.04em;
+			text-transform: uppercase;
+			color: var(--text-label);
+		}
+		.suggested-action__help-items { margin: 0; padding: 0; }
+		.suggested-action__help-item {
+			padding: 0.45rem 0.5rem;
+			border-radius: 8px;
+			margin-bottom: 0.35rem;
+			border: 1px solid transparent;
+		}
+		.suggested-action__help-item:last-child { margin-bottom: 0; }
+		/* Active recommendation in help tooltip: selected state only, not button-like */
+		.suggested-action__help-item.is-current {
+			background: var(--primary-soft);
+			border-color: color-mix(in srgb, var(--primary) 32%, var(--border));
+			box-shadow: none;
+		}
+		.suggested-action__help-item-title {
+			display: block;
+			font-size: 12px;
+			font-weight: 700;
+			color: var(--text-ink);
+			margin-bottom: 0.28rem;
+		}
+		.suggested-action__help-item p {
+			margin: 0.12rem 0;
+			font-size: 12px;
+			line-height: 1.45;
+			color: #64748b;
+			font-weight: 500;
+		}
+		.panel {
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			padding: 0.9rem 1rem;
+			margin-bottom: 0.85rem;
+			box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+		}
+		.panel h2 {
+			margin: 0 0 0.45rem;
+			font-size: 11px;
+			font-weight: 700;
+			letter-spacing: 0.06em;
+			text-transform: uppercase;
+			color: var(--text-label);
+		}
+		.panel p {
+			margin: 0;
+			font-size: 14px;
+			font-weight: 500;
+			color: var(--text-ink);
+			line-height: 1.55;
+		}
+		.signal-list {
+			list-style: none;
+			margin: 0;
+			padding: 0;
+		}
+		.signal-list li {
+			position: relative;
+			padding-left: 1.2rem;
+			margin: 0.35rem 0;
+			font-size: 13px;
+			font-weight: 500;
+			line-height: 1.45;
+		}
+		.signal-list li::before {
+			content: '';
+			position: absolute;
+			left: 0;
+			top: 0.35rem;
+			width: 7px;
+			height: 7px;
+			border-radius: 50%;
+			background: var(--primary);
+		}
+		.icp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; margin-bottom: 0.5rem; }
+		.icp-high {
+			background: var(--badge-success-bg);
+			color: var(--badge-success-fg);
+			border-color: var(--badge-success-border);
+		}
+		.icp-medium {
+			background: var(--badge-warning-bg);
+			color: var(--badge-warning-fg);
+			border-color: var(--badge-warning-border);
+		}
+		.icp-low {
+			background: var(--badge-danger-bg);
+			color: var(--badge-danger-fg);
+			border-color: var(--badge-danger-border);
+		}
+		.icp-score-muted { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+		.mini-dl {
+			display: grid;
+			grid-template-columns: 100px 1fr;
+			gap: 6px 0.65rem;
+			font-size: 13px;
+			margin: 0;
+		}
+		.mini-dl dt { margin: 0; font-size: 11px; font-weight: 500; color: var(--text-label); }
+		.mini-dl dd { margin: 0; font-weight: 500; word-break: break-word; }
+		details.more {
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			background: #f8fafc;
+			margin-top: 0.5rem;
+			overflow: hidden;
+		}
+		details.more summary {
+			padding: 0.65rem 0.85rem;
+			font-size: 13px;
+			font-weight: 600;
+			cursor: pointer;
+			list-style: none;
+		}
+		details.more summary::-webkit-details-marker { display: none; }
+		details.more .inner { padding: 0 0.85rem 0.85rem; }
+		.mono { font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 400; word-break: break-all; }
+		a { color: var(--primary); }
+	</style>
+</head>
+<body>
+	<p class="back"><a href="/leads">← Back to list</a></p>
+	<h1>{{if .Lead.Company}}{{.Lead.Company}}{{else}}Lead #{{.Lead.ID}}{{end}}</h1>
+	<p class="hero-domain">{{if .Lead.OfficialDomain}}{{.Lead.OfficialDomain}}{{else if .Lead.WebsiteDomain}}{{.Lead.WebsiteDomain}}{{else}}—{{end}}</p>
+
+	{{template "suggestedAction" (suggestedAction .Lead)}}
+
+	{{if .Lead.MissingOptional}}
+	<div class="panel" style="background:#fff8e6;border-color:#fde68a;">
+		<h2>Before you reach out</h2>
+		<p style="margin-bottom:0.5rem;font-size:13px;">A few fields are still thin — you may want:</p>
+		<ul class="signal-list" style="margin:0;padding-left:0;">
+			{{range .Lead.MissingOptional}}<li>{{.}}</li>{{end}}
+		</ul>
+	</div>
+	{{end}}
+
+	<div class="panel">
+		<h2>Why this lead is worth your time</h2>
+		<p>{{if .Lead.ReasonForFit}}{{.Lead.ReasonForFit}}{{else if .Lead.Summary}}{{.Lead.Summary}}{{else if .Lead.WhyNow}}{{.Lead.WhyNow}}{{else}}We matched this company to your profile — add a short note here when you learn more in conversation.{{end}}</p>
+	</div>
+
+	<div class="panel">
+		<h2>How to approach</h2>
+		<p>{{if .Lead.SalesAngle}}{{.Lead.SalesAngle}}{{else}}Lead with operational pain in their sector: training visibility, consistency across sites, and audit-friendly reporting for distributed teams.{{end}}</p>
+	</div>
+
+	<div class="panel">
+		<h2>Signal snapshot</h2>
+		<ul class="signal-list">
+			{{if .Lead.Industry}}<li>Industry context: {{.Lead.Industry}}</li>{{end}}
+			{{if or .Lead.EmployeeSize .Lead.Size}}<li>Scale cue: {{if .Lead.EmployeeSize}}{{.Lead.EmployeeSize}}{{else}}{{.Lead.Size}}{{end}}</li>{{end}}
+			{{if eq .Lead.WhyNowStrength "high"}}<li>Timing looks strong</li>{{else if eq .Lead.WhyNowStrength "medium"}}<li>Moderate timing signal</li>{{else if .Lead.WhyNow}}<li>Timing signal: validate in first call</li>{{end}}
+		</ul>
+	</div>
+
+	<div class="panel">
+		<h2>ICP fit</h2>
+		<div class="icp-row">
+			{{$m := .Lead.ICPMatch}}
+			{{if or (eq $m "yes") (eq $m "high")}}
+			<span class="icp-badge icp-high">High</span>
+			{{else if or (eq $m "partial") (eq $m "medium")}}
+			<span class="icp-badge icp-medium">Medium</span>
+			{{else}}
+			<span class="icp-badge icp-low">Low</span>
+			{{end}}
+			<span class="icp-score-muted">Priority score {{if .Lead.PriorityScore}}{{.Lead.PriorityScore}}{{else}}0{{end}}/100</span>
+		</div>
+		<ul class="signal-list">
+			{{range $i, $r := .Lead.Reasons}}
+			{{if lt $i 3}}<li>{{$r}}</li>{{end}}
+			{{end}}
+			{{if not .Lead.Reasons}}<li>Based on industry, size cues, and text signals available so far.</li>{{end}}
+		</ul>
+	</div>
+
+	<div class="panel">
+		<h2>Company</h2>
+		<dl class="mini-dl">
+			<dt>LinkedIn</dt>
+			<dd>{{if .Lead.LinkedInURL}}<a href="{{.Lead.LinkedInURL}}" target="_blank" rel="noopener">Open profile</a>{{else}}—{{end}}</dd>
+			<dt>Region</dt>
+			<dd>{{if .Lead.CountryRegion}}{{.Lead.CountryRegion}}{{else}}—{{end}}</dd>
+			<dt>Industry</dt>
+			<dd>{{if .Lead.Industry}}{{.Lead.Industry}}{{else}}—{{end}}</dd>
+			<dt>Size</dt>
+			<dd>{{if .Lead.EmployeeSize}}{{.Lead.EmployeeSize}}{{else if .Lead.Size}}{{.Lead.Size}}{{else}}—{{end}}</dd>
+		</dl>
+	</div>
+
+	<details class="more">
+		<summary>More details</summary>
+		<div class="inner">
+			<dl class="mini-dl">
+				<dt>Source</dt><dd>{{if .Lead.Source}}{{.Lead.Source}}{{else}}—{{end}}</dd>
+				<dt>Source path</dt><dd class="mono">{{if .Lead.SourceTrace}}{{range $i, $s := .Lead.SourceTrace}}{{if $i}} → {{end}}{{$s}}{{end}}{{else}}—{{end}}</dd>
+				<dt>Source ref</dt><dd class="mono">{{if .Lead.SourceRef}}{{.Lead.SourceRef}}{{else}}—{{end}}</dd>
+				<dt>Integrations</dt>
+				<dd>{{if .Lead.UsedGoogle}}Google{{end}}{{if .Lead.UsedApollo}}{{if .Lead.UsedGoogle}}, {{end}}Apollo{{end}}{{if .Lead.UsedLinkedIn}}{{if or .Lead.UsedGoogle .Lead.UsedApollo}}, {{end}}LinkedIn{{end}}{{if not (or .Lead.UsedGoogle .Lead.UsedApollo .Lead.UsedLinkedIn)}}—{{end}}</dd>
+				<dt>Added</dt><dd>{{.Lead.CreatedAt.Format "2006-01-02 15:04"}}</dd>
+				<dt>Completeness</dt><dd>{{if .Lead.DataCompleteness}}{{.Lead.DataCompleteness}}{{else}}0{{end}}/100</dd>
+				<dt>Confidence</dt><dd>{{if .Lead.Confidence}}{{.Lead.Confidence}}{{else}}—{{end}}</dd>
+				<dt>Internal note</dt><dd>{{if .Lead.AcceptExplanation}}{{.Lead.AcceptExplanation}}{{else}}—{{end}}</dd>
+				<dt>Record metadata</dt><dd class="mono">{{.Lead.SalesStatus}} · {{.Lead.LeadStatus}} · {{.Lead.DuplicateStatus}}</dd>
+			</dl>
+		</div>
+	</details>
+	<script>
+	(function () {
+		function closeAllSuggestedActionHelp() {
+			document.querySelectorAll('[data-suggested-action-help].is-open').forEach(function (wrap) {
+				wrap.classList.remove('is-open');
+				var b = wrap.querySelector('.suggested-action__help-btn');
+				var p = wrap.querySelector('.suggested-action__help-popover');
+				if (b) b.setAttribute('aria-expanded', 'false');
+				if (p) p.setAttribute('aria-hidden', 'true');
+			});
+		}
+		document.querySelectorAll('[data-suggested-action-help]').forEach(function (wrap) {
+			var btn = wrap.querySelector('.suggested-action__help-btn');
+			var pop = wrap.querySelector('.suggested-action__help-popover');
+			if (!btn || !pop) return;
+			wrap.addEventListener('click', function (e) { e.stopPropagation(); });
+			btn.addEventListener('click', function (e) {
+				e.stopPropagation();
+				var open = !wrap.classList.contains('is-open');
+				wrap.classList.toggle('is-open', open);
+				btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+				pop.setAttribute('aria-hidden', open ? 'false' : 'true');
+			});
+		});
+		document.addEventListener('keydown', function (e) {
+			if (e.key === 'Escape') closeAllSuggestedActionHelp();
+		});
+		document.addEventListener('click', closeAllSuggestedActionHelp);
+	})();
+	</script>
+</body>
+</html>

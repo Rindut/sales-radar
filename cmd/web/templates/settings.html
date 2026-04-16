@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Settings — Sales Radar</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+	<style>
+		:root {
+			--font-sans: "Inter", system-ui, -apple-system, sans-serif;
+			--text-ink: #0f172a;
+			--text-label: #64748b;
+			--bg-page: #f8fafc;
+			--bg-card: #ffffff;
+			--bg-sidebar: #ffffff;
+			--border: #e2e8f0;
+			--text: #0f172a;
+			--text-muted: #64748b;
+			--primary: #216ab7;
+			--primary-hover: #1b5a9b;
+			--primary-active: #174c83;
+			--primary-soft: #eaf3fb;
+			--primary-accent: #c7dbef;
+			--success-bg: #dcfce7;
+			--success-text: #166534;
+			--warn-bg: #fef3c7;
+			--warn-text: #92400e;
+			--danger-bg: #fee2e2;
+			--danger-text: #991b1b;
+			--neutral-bg: #f1f5f9;
+			--neutral-text: #475569;
+			--shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+			--shadow-md: 0 4px 14px rgba(15, 23, 42, 0.08);
+			--radius: 10px;
+			--sidebar-w-expanded: 260px;
+			--sidebar-w-collapsed: 84px;
+			--sidebar-w: var(--sidebar-w-expanded);
+		}
+		html.sidebar-collapsed { --sidebar-w: var(--sidebar-w-collapsed); }
+		* { box-sizing: border-box; }
+		body {
+			margin: 0;
+			font-family: var(--font-sans);
+			color: var(--text);
+			background: var(--bg-page);
+			min-height: 100vh;
+			font-size: 14px;
+			line-height: 1.5;
+			-webkit-font-smoothing: antialiased;
+		}
+		a { color: var(--primary); text-decoration: none; }
+		a:hover { text-decoration: underline; }
+		.app-shell { display: flex; min-height: 100vh; }
+		.sidebar {
+			width: var(--sidebar-w);
+			min-width: var(--sidebar-w);
+			flex-shrink: 0;
+			background: var(--bg-sidebar);
+			border-right: 1px solid var(--border);
+			display: flex;
+			flex-direction: column;
+			padding: 1rem 0;
+			overflow-x: hidden;
+			transition: width 0.22s ease, min-width 0.22s ease;
+		}
+		@media (prefers-reduced-motion: reduce) { .sidebar { transition: none; } }
+		.sidebar-header {
+			display: flex;
+			flex-direction: column;
+			gap: 0.5rem;
+			padding: 0.35rem 0.75rem 1rem;
+			border-bottom: 1px solid var(--border);
+			margin-bottom: 0.75rem;
+		}
+		.sidebar-header-row {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 0.5rem;
+		}
+		.sidebar-toggle {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 32px;
+			height: 32px;
+			padding: 0;
+			border: none;
+			background: transparent;
+			color: var(--text-muted);
+			border-radius: 8px;
+			cursor: pointer;
+			flex-shrink: 0;
+		}
+		.sidebar-toggle:hover { background: #f1f5f9; color: var(--text); }
+		.sidebar-toggle:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+		.sidebar-toggle svg { width: 18px; height: 18px; }
+		.sidebar-chevron-left { display: block; }
+		.sidebar-chevron-right { display: none; }
+		html.sidebar-collapsed .sidebar-chevron-left { display: none; }
+		html.sidebar-collapsed .sidebar-chevron-right { display: block; }
+		.sidebar-brand {
+			display: flex;
+			align-items: center;
+			min-width: 0;
+			flex: 1;
+			padding: 0.2rem 0 0.15rem;
+		}
+		html.sidebar-collapsed .sidebar-header {
+			padding: 0.5rem 0.5rem 0.65rem;
+			margin-bottom: 0.5rem;
+		}
+		html.sidebar-collapsed .sidebar-header-row {
+			justify-content: center;
+			gap: 0;
+		}
+		html.sidebar-collapsed .sidebar-brand { display: none; }
+		.sidebar-brand-img {
+			height: 40px;
+			width: auto;
+			max-width: 200px;
+			object-fit: contain;
+			object-position: left center;
+			display: block;
+		}
+		.nav-item {
+			display: flex;
+			align-items: center;
+			gap: 0.6rem;
+			padding: 0.6rem 1rem;
+			margin: 0 0.5rem;
+			border-radius: 8px;
+			font-size: 14px;
+			font-weight: 500;
+			color: var(--text-label);
+			text-decoration: none;
+			border: none;
+			background: transparent;
+			cursor: pointer;
+			width: calc(100% - 1rem);
+			text-align: left;
+			font: inherit;
+		}
+		.nav-item:hover { background: #f8fafc; color: var(--text); text-decoration: none; }
+		.nav-item:focus-visible {
+			outline: none;
+			background: var(--primary-soft);
+			box-shadow: inset 0 0 0 2px var(--primary);
+		}
+		.nav-item.active {
+			background: var(--primary-soft);
+			color: var(--primary);
+			font-weight: 600;
+			box-shadow: inset 3px 0 0 var(--primary);
+		}
+		html.sidebar-collapsed .nav-item {
+			justify-content: center;
+			width: calc(100% - 1rem);
+			padding-left: 0.5rem;
+			padding-right: 0.5rem;
+		}
+		html.sidebar-collapsed .nav-item.active {
+			box-shadow: none;
+			background: var(--primary-soft);
+			color: var(--primary);
+		}
+		html.sidebar-collapsed .nav-label {
+			position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+			overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+		}
+		.nav-item .ni-icon { width: 20px; height: 20px; opacity: 0.85; flex-shrink: 0; }
+		.nav-item.active .ni-icon { opacity: 1; }
+
+		.main { flex: 1; min-width: 0; padding: 1.25rem 1.75rem 2rem; max-width: 860px; }
+		.page-header {
+			display: flex;
+			flex-direction: column;
+			align-items: stretch;
+			gap: 0.35rem;
+			margin-bottom: 1.25rem;
+		}
+		.page-header-title-row {
+			display: flex;
+			align-items: center;
+			flex-wrap: wrap;
+		}
+		.page-header h1 {
+			margin: 0;
+			font-size: 22px;
+			font-weight: 600;
+			line-height: 1.25;
+			letter-spacing: -0.015em;
+			color: var(--text-ink);
+		}
+		.page-header-sub {
+			margin: 0;
+			font-size: 14px;
+			font-weight: 500;
+			color: var(--text-label);
+			line-height: 1.5;
+			max-width: 42rem;
+		}
+
+		.settings-section {
+			margin-bottom: 1.35rem;
+		}
+		.settings-section h2 {
+			margin: 0 0 0.35rem;
+			font-size: 15px;
+			font-weight: 600;
+			line-height: 1.35;
+			color: var(--text-ink);
+		}
+		.settings-section-sub {
+			margin: 0 0 0.65rem;
+			font-size: 13px;
+			font-weight: 500;
+			color: var(--text-label);
+			line-height: 1.45;
+			max-width: 40rem;
+		}
+
+		.settings-card {
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			box-shadow: var(--shadow-sm);
+			overflow: hidden;
+		}
+		.settings-card--sources {
+			overflow: visible;
+		}
+		.settings-card--padded {
+			padding: 1rem 1.1rem 1.05rem;
+		}
+
+		.ds-row {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			justify-content: space-between;
+			gap: 0.45rem 0.75rem;
+			padding: 0.5rem 1rem;
+			border-bottom: 1px solid var(--border);
+			min-height: 2.75rem;
+		}
+		.ds-row:last-child { border-bottom: none; }
+		.ds-row-left {
+			display: flex;
+			align-items: center;
+			gap: 0.35rem;
+			min-width: 0;
+		}
+		.ds-row-title {
+			margin: 0;
+			font-size: 14px;
+			font-weight: 600;
+			color: var(--text-ink);
+			line-height: 1.3;
+		}
+		.ds-info-anchor {
+			position: relative;
+			flex-shrink: 0;
+		}
+		.ds-info-btn {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 28px;
+			height: 28px;
+			padding: 0;
+			border: none;
+			border-radius: 8px;
+			background: transparent;
+			color: var(--text-muted);
+			cursor: pointer;
+			line-height: 0;
+		}
+		.ds-info-btn:hover {
+			background: #f1f5f9;
+			color: var(--primary);
+		}
+		.ds-info-btn:focus-visible {
+			outline: 2px solid var(--primary);
+			outline-offset: 2px;
+		}
+		.ds-info-flyout {
+			display: none;
+			position: absolute;
+			left: 0;
+			top: calc(100% + 6px);
+			z-index: 60;
+			width: min(318px, calc(100vw - 2rem));
+			padding: 0.65rem 0.75rem 0.7rem;
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			border-radius: 10px;
+			box-shadow: var(--shadow-md);
+			font-size: 12px;
+			font-weight: 500;
+			line-height: 1.45;
+			color: var(--text-muted);
+		}
+		.ds-info-flyout strong {
+			display: block;
+			font-size: 13px;
+			font-weight: 600;
+			color: var(--text-ink);
+			margin-bottom: 0.4rem;
+		}
+		.ds-info-flyout ul {
+			margin: 0;
+			padding-left: 1.05rem;
+		}
+		.ds-info-flyout li { margin: 0.2rem 0; }
+		.ds-info-flyout .ds-info-error {
+			margin: 0.45rem 0 0;
+			padding-top: 0.45rem;
+			border-top: 1px solid var(--border);
+			color: var(--danger-text);
+			font-size: 11px;
+		}
+		@media (hover: hover) and (pointer: fine) {
+			.ds-info-anchor:hover .ds-info-flyout,
+			.ds-info-anchor:focus-within .ds-info-flyout {
+				display: block;
+			}
+		}
+		.ds-info-anchor.ds-info-open .ds-info-flyout {
+			display: block;
+		}
+		.ds-row-actions {
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+			flex-wrap: wrap;
+			gap: 0.5rem 0.65rem;
+			margin-left: auto;
+		}
+		.ds-toggle {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.4rem;
+			cursor: pointer;
+			font-size: 13px;
+			font-weight: 600;
+			color: var(--text);
+			user-select: none;
+			white-space: nowrap;
+		}
+		.ds-toggle input {
+			width: 1rem;
+			height: 1rem;
+			accent-color: var(--primary);
+			flex-shrink: 0;
+		}
+
+		.badge-pill {
+			display: inline-block;
+			padding: 0.2rem 0.55rem;
+			border-radius: 6px;
+			font-size: 0.72rem;
+			font-weight: 700;
+			letter-spacing: 0.02em;
+			white-space: nowrap;
+		}
+		.badge-muted { background: var(--neutral-bg); color: var(--neutral-text); }
+		.badge-warn { background: var(--warn-bg); color: var(--warn-text); }
+		.badge-info { background: var(--primary-soft); color: var(--primary); }
+		.badge-ok { background: var(--success-bg); color: var(--success-text); }
+		.badge-danger { background: var(--danger-bg); color: var(--danger-text); }
+
+		.icp-hint {
+			margin: 0 0 0.85rem;
+			font-size: 12px;
+			font-weight: 500;
+			color: var(--text-muted);
+			line-height: 1.45;
+		}
+		.icp-subsection {
+			margin-bottom: 1rem;
+			padding-bottom: 0.85rem;
+			border-bottom: 1px solid var(--border);
+		}
+		.icp-subsection:last-of-type {
+			margin-bottom: 0;
+			padding-bottom: 0;
+			border-bottom: none;
+		}
+		.icp-subsection h3 {
+			margin: 0 0 0.35rem;
+			font-size: 13px;
+			font-weight: 600;
+			color: var(--text-ink);
+			line-height: 1.35;
+		}
+		.icp-subsection .icp-sub-hint {
+			margin: 0 0 0.55rem;
+			font-size: 12px;
+			font-weight: 500;
+			color: var(--text-muted);
+			line-height: 1.45;
+		}
+		.icp-check-grid {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 0.45rem 0.85rem;
+		}
+		@media (max-width: 560px) {
+			.icp-check-grid { grid-template-columns: 1fr; }
+		}
+		.icp-check {
+			display: flex;
+			align-items: flex-start;
+			gap: 0.45rem;
+			font-size: 13px;
+			font-weight: 500;
+			color: var(--text);
+			cursor: pointer;
+			line-height: 1.35;
+		}
+		.icp-check input {
+			margin-top: 2px;
+			accent-color: var(--primary);
+			flex-shrink: 0;
+		}
+		.icp-check span { min-width: 0; }
+		.icp-check-hint {
+			display: block;
+			font-size: 11px;
+			font-weight: 500;
+			color: var(--text-muted);
+			margin-top: 2px;
+			line-height: 1.35;
+		}
+		.icp-size-doc {
+			margin: 0 0 0.55rem;
+			font-size: 12px;
+			font-weight: 500;
+			color: var(--text-label);
+			line-height: 1.45;
+		}
+		.icp-grid {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 0.75rem 1rem;
+		}
+		@media (max-width: 640px) {
+			.icp-grid { grid-template-columns: 1fr; }
+		}
+		.icp-field {
+			display: flex;
+			flex-direction: column;
+			gap: 0.35rem;
+			min-width: 0;
+		}
+		.icp-field label {
+			font-size: 12px;
+			font-weight: 600;
+			color: var(--text-label);
+			line-height: 1.25;
+		}
+		.icp-field select,
+		.icp-field textarea {
+			font: inherit;
+			font-size: 0.875rem;
+			font-weight: 500;
+			color: var(--text);
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			border-radius: 8px;
+			padding: 0.45rem 0.55rem;
+			width: 100%;
+		}
+		.icp-field select:focus,
+		.icp-field textarea:focus {
+			outline: none;
+			border-color: var(--primary);
+			box-shadow: 0 0 0 3px var(--primary-soft);
+		}
+		.icp-field--full { grid-column: 1 / -1; }
+		.icp-field textarea {
+			min-height: 5.5rem;
+			resize: vertical;
+			line-height: 1.45;
+		}
+
+		.settings-actions {
+			margin-top: 1.15rem;
+			display: flex;
+			align-items: center;
+			gap: 0.75rem;
+			flex-wrap: wrap;
+		}
+		.btn {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			gap: 0.35rem;
+			padding: 0.5rem 1rem;
+			font-size: 0.875rem;
+			font-weight: 600;
+			border-radius: 999px;
+			border: 1px solid var(--border);
+			background: var(--bg-card);
+			color: var(--text);
+			cursor: pointer;
+			text-decoration: none;
+			box-shadow: var(--shadow-sm);
+		}
+		.btn:hover { text-decoration: none; background: #f8fafc; }
+		.btn:focus-visible {
+			outline: 2px solid var(--primary);
+			outline-offset: 2px;
+		}
+		.btn-primary {
+			background: var(--primary);
+			color: #fff;
+			border-color: var(--primary);
+		}
+		.btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+		.btn-primary:active { background: var(--primary-active); border-color: var(--primary-active); }
+		.settings-back { font-size: 0.88rem; font-weight: 500; }
+	</style>
+</head>
+<body>
+	<script>
+	(function () {
+		try {
+			if (localStorage.getItem('salesradar.sidebarCollapsed') === 'true') {
+				document.documentElement.classList.add('sidebar-collapsed');
+			}
+		} catch (e) {}
+	})();
+	</script>
+	<div class="app-shell">
+		<aside class="sidebar" aria-label="Main navigation">
+			<div class="sidebar-header">
+				<div class="sidebar-header-row">
+					<div class="sidebar-brand">
+						<img class="sidebar-brand-img" src="/static/Logo-Sales-Radar.png" alt="Sales Radar" width="240" height="48" decoding="async" />
+					</div>
+					<button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-expanded="true" aria-controls="sidebar-nav" aria-label="Collapse sidebar">
+						<svg class="sidebar-chevron-left" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M15 18l-6-6 6-6"/></svg>
+						<svg class="sidebar-chevron-right" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
+					</button>
+				</div>
+			</div>
+			<nav id="sidebar-nav" aria-label="Primary">
+				<a href="/leads" class="nav-item" title="Lead List">
+					<svg class="ni-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+					<span class="nav-label">Lead List</span>
+				</a>
+				<a href="/settings" class="nav-item active" aria-current="page" title="Settings">
+					<svg class="ni-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543-.94-3.31.826-2.37 2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+					<span class="nav-label">Settings</span>
+				</a>
+			</nav>
+		</aside>
+
+		<main class="main">
+			<header class="page-header">
+				<div class="page-header-title-row">
+					<h1>Settings</h1>
+				</div>
+				<p class="page-header-sub">Manage discovery sources and ideal customer profile</p>
+			</header>
+
+			<form method="post" action="/settings">
+				<section class="settings-section" aria-labelledby="sec-discovery">
+					<h2 id="sec-discovery">Discovery Sources</h2>
+					<p class="settings-section-sub">Choose which sources are used for lead discovery and enrichment.</p>
+					<div class="settings-card settings-card--sources">
+						{{range .Rows}}
+						<div class="ds-row">
+							<div class="ds-row-left">
+								<span class="ds-row-title">{{.Name}}</span>
+								<div class="ds-info-anchor">
+									<button type="button" class="ds-info-btn" aria-label="About {{.Name}}" aria-expanded="false" aria-controls="ds-flyout-{{.Key}}">
+										<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" d="M12 16v-5M12 8h.01"/></svg>
+									</button>
+									<div class="ds-info-flyout" id="ds-flyout-{{.Key}}" role="region">
+										<strong>{{.Name}}</strong>
+										<ul>
+											<li>{{.Description}}</li>
+											<li>{{.Dependency}}</li>
+											{{if .UsageHint}}<li>{{.UsageHint}}</li>{{end}}
+										</ul>
+										{{if .LastError}}<p class="ds-info-error">{{.LastError}}</p>{{end}}
+									</div>
+								</div>
+							</div>
+							<div class="ds-row-actions">
+								{{if eq .Badge "Disabled"}}
+								<span class="badge-pill badge-muted">Disabled</span>
+								{{else if eq .Badge "Missing config"}}
+								<span class="badge-pill badge-warn">Missing config</span>
+								{{else if eq .Badge "Error"}}
+								<span class="badge-pill badge-danger">Error</span>
+								{{else if or (eq .Badge "Configured") (eq .Badge "Experimental")}}
+								<span class="badge-pill badge-info">{{.Badge}}</span>
+								{{else if eq .Badge "Enabled"}}
+								<span class="badge-pill badge-ok">Enabled</span>
+								{{else}}
+								<span class="badge-pill badge-ok">{{.Badge}}</span>
+								{{end}}
+								<label class="ds-toggle">
+									<input type="checkbox" name="{{.FormName}}" {{if .Enabled}}checked{{end}}>
+									<span>{{if .Enabled}}On{{else}}Off{{end}}</span>
+								</label>
+							</div>
+						</div>
+						{{end}}
+					</div>
+				</section>
+
+				<section class="settings-section" aria-labelledby="sec-icp">
+					<h2 id="sec-icp">ICP Settings</h2>
+					<p class="settings-section-sub">Who you want to pursue. These choices apply the next time you run <strong>Generate Leads</strong>.</p>
+					<div class="settings-card settings-card--padded">
+
+						<div class="icp-subsection">
+							<h3>Industry target</h3>
+							<div class="icp-check-grid">
+								{{range .CatalogIndustries}}
+								<label class="icp-check">
+									<input type="checkbox" name="icp_target_industry" value="{{.ID}}" {{if icpListContains $.ICP.TargetIndustries .ID}}checked{{end}}>
+									<span>{{.Label}}</span>
+								</label>
+								{{end}}
+							</div>
+						</div>
+
+						<div class="icp-subsection">
+							<h3>Company size</h3>
+							<div class="icp-grid">
+								<div class="icp-field">
+									<label for="icp_min_employees">Minimum employees</label>
+									<select id="icp_min_employees" name="icp_min_employees">
+										<option value="" {{if eq $.ICP.MinEmployees ""}}selected{{end}}>—</option>
+										<option value="50" {{if eq $.ICP.MinEmployees "50"}}selected{{end}}>50</option>
+										<option value="100" {{if eq $.ICP.MinEmployees "100"}}selected{{end}}>100</option>
+										<option value="200" {{if eq $.ICP.MinEmployees "200"}}selected{{end}}>200</option>
+										<option value="500" {{if eq $.ICP.MinEmployees "500"}}selected{{end}}>500</option>
+										<option value="1000" {{if eq $.ICP.MinEmployees "1000"}}selected{{end}}>1000</option>
+									</select>
+								</div>
+								<div class="icp-field">
+									<label for="icp_max_employees">Maximum employees</label>
+									<select id="icp_max_employees" name="icp_max_employees">
+										<option value="" {{if eq $.ICP.MaxEmployees ""}}selected{{end}}>No limit</option>
+										<option value="500" {{if eq $.ICP.MaxEmployees "500"}}selected{{end}}>500</option>
+										<option value="1000" {{if eq $.ICP.MaxEmployees "1000"}}selected{{end}}>1000</option>
+										<option value="5000" {{if eq $.ICP.MaxEmployees "5000"}}selected{{end}}>5000</option>
+									</select>
+								</div>
+							</div>
+							<div class="icp-field" style="margin-top:0.65rem;">
+								<label class="icp-check" style="cursor:pointer;">
+									<input type="checkbox" name="apply_sub50" value="on" {{if icpSub50On .ICP.ApplySub50}}checked{{end}}>
+									<span>Exclude companies with under 50 employees when size is clear in the data</span>
+								</label>
+							</div>
+						</div>
+
+						<div class="icp-subsection">
+							<h3>Region</h3>
+							<div class="icp-field" style="max-width:20rem;">
+								<label for="icp_region_focus">Market focus</label>
+								<select id="icp_region_focus" name="icp_region_focus">
+									{{range .CatalogRegions}}
+									<option value="{{.ID}}" {{if eq $.ICP.RegionFocus .ID}}selected{{end}}>{{.Label}}</option>
+									{{end}}
+								</select>
+							</div>
+						</div>
+
+						<div class="icp-subsection">
+							<h3>Buying signals</h3>
+							<p class="icp-sub-hint">What we look for in company text. Uncheck to ignore a theme.</p>
+							<div class="icp-check-grid">
+								{{range .CatalogSignals}}
+								<label class="icp-check">
+									<input type="checkbox" name="icp_signal" value="{{.ID}}" {{if or (eq (len $.ICP.SignalKeys) 0) (icpListContains $.ICP.SignalKeys .ID)}}checked{{end}}>
+									<span>{{.Label}}</span>
+								</label>
+								{{end}}
+							</div>
+						</div>
+
+						<div class="icp-subsection">
+							<h3>Priority</h3>
+							<p class="icp-sub-hint">How much each factor raises or lowers the priority score (0–100).</p>
+							<div class="icp-grid">
+								<div class="icp-field">
+									<label for="weight_industry">Industry fit</label>
+									<select id="weight_industry" name="weight_industry">
+										{{range .CatalogWeights}}
+										<option value="{{.}}" {{if eq $.ICP.WeightIndustry .}}selected{{end}}>{{.}}</option>
+										{{end}}
+									</select>
+								</div>
+								<div class="icp-field">
+									<label for="weight_signal">Signals</label>
+									<select id="weight_signal" name="weight_signal">
+										{{range .CatalogWeights}}
+										<option value="{{.}}" {{if eq $.ICP.WeightSignal .}}selected{{end}}>{{.}}</option>
+										{{end}}
+									</select>
+								</div>
+								<div class="icp-field">
+									<label for="weight_size">Company size</label>
+									<select id="weight_size" name="weight_size">
+										{{range .CatalogWeights}}
+										<option value="{{.}}" {{if eq $.ICP.WeightSize .}}selected{{end}}>{{.}}</option>
+										{{end}}
+									</select>
+								</div>
+							</div>
+						</div>
+					</div>
+				</section>
+
+				<div class="settings-actions">
+					<button type="submit" class="btn btn-primary">Save changes</button>
+					<a class="settings-back" href="/leads">← Back to Lead List</a>
+				</div>
+			</form>
+		</main>
+	</div>
+
+	<script>
+	(function () {
+		var SIDEBAR_KEY = 'salesradar.sidebarCollapsed';
+		var sidebarToggle = document.getElementById('sidebar-toggle');
+		function syncSidebarToggleUI() {
+			if (!sidebarToggle) return;
+			var collapsed = document.documentElement.classList.contains('sidebar-collapsed');
+			sidebarToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+			sidebarToggle.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+		}
+		syncSidebarToggleUI();
+		if (sidebarToggle) {
+			sidebarToggle.addEventListener('click', function () {
+				var nowCollapsed = document.documentElement.classList.toggle('sidebar-collapsed');
+				try {
+					localStorage.setItem(SIDEBAR_KEY, nowCollapsed ? 'true' : 'false');
+				} catch (e) {}
+				syncSidebarToggleUI();
+			});
+		}
+		/* Sync discovery row On/Off labels with checkboxes */
+		document.querySelectorAll('.ds-toggle input[type=checkbox]').forEach(function (cb) {
+			function sync() {
+				var t = cb.closest('.ds-toggle');
+				if (!t) return;
+				var span = t.querySelector('span');
+				if (span) span.textContent = cb.checked ? 'On' : 'Off';
+			}
+			cb.addEventListener('change', sync);
+			sync();
+		});
+		/* Discovery source info: hover shows flyout on fine pointers; tap toggles popover */
+		(function () {
+			var mq = window.matchMedia('(hover: hover) and (pointer: fine)');
+			function closeDiscoveryFlyouts(except) {
+				document.querySelectorAll('.ds-info-anchor.ds-info-open').forEach(function (w) {
+					if (except && w === except) return;
+					w.classList.remove('ds-info-open');
+					var b = w.querySelector('.ds-info-btn');
+					if (b) b.setAttribute('aria-expanded', 'false');
+				});
+			}
+			document.querySelectorAll('.ds-info-flyout').forEach(function (panel) {
+				panel.addEventListener('click', function (e) { e.stopPropagation(); });
+			});
+			document.querySelectorAll('.ds-info-anchor').forEach(function (anchor) {
+				var btn = anchor.querySelector('.ds-info-btn');
+				if (!btn) return;
+				btn.addEventListener('click', function (e) {
+					if (mq.matches) return;
+					e.stopPropagation();
+					var willOpen = !anchor.classList.contains('ds-info-open');
+					closeDiscoveryFlyouts();
+					if (willOpen) {
+						anchor.classList.add('ds-info-open');
+						btn.setAttribute('aria-expanded', 'true');
+					}
+				});
+			});
+			document.addEventListener('click', function () { closeDiscoveryFlyouts(); });
+			document.addEventListener('keydown', function (e) {
+				if (e.key === 'Escape') closeDiscoveryFlyouts();
+			});
+		})();
+	})();
+	</script>
+</body>
+</html>

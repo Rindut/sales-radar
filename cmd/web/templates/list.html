@@ -1,0 +1,2722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Lead List — Sales Radar</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+	<style>
+		:root {
+			--font-sans: "Inter", system-ui, -apple-system, sans-serif;
+			--text-ink: #0f172a;
+			--text-label: #64748b;
+			--bg-page: #f8fafc;
+			--bg-card: #ffffff;
+			--bg-sidebar: #ffffff;
+			--border: #e2e8f0;
+			--text: #0f172a;
+			--text-muted: #64748b;
+			--primary: #216ab7;
+			--primary-hover: #1b5a9b;
+			--primary-active: #174c83;
+			--primary-soft: #eaf3fb;
+			--primary-accent: #c7dbef;
+			--success-bg: #dcfce7;
+			--success-text: #166534;
+			--warn-bg: #fef3c7;
+			--warn-text: #92400e;
+			--pending-bg: #ffedd5;
+			--pending-text: #9a3412;
+			--danger-bg: #fee2e2;
+			--danger-text: #991b1b;
+			--neutral-bg: #f1f5f9;
+			--neutral-text: #475569;
+			/* Status pills: ICP tier + drawer suggested action (shared shape, semantic fill) */
+			--badge-success-bg: #dcfce7;
+			--badge-success-fg: #166534;
+			--badge-success-border: #86efac;
+			--badge-warning-bg: #fef3c7;
+			--badge-warning-fg: #92400e;
+			--badge-warning-border: #fcd34d;
+			--badge-danger-bg: #fee2e2;
+			--badge-danger-fg: #991b1b;
+			--badge-danger-border: #fecaca;
+			--badge-info-bg: #dbeafe;
+			--badge-info-fg: #1e40af;
+			--badge-info-border: #93c5fd;
+			--badge-neutral-bg: #e2e8f0;
+			--badge-neutral-fg: #334155;
+			--badge-neutral-border: #cbd5e1;
+			--shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+			--shadow-md: 0 4px 14px rgba(15, 23, 42, 0.08);
+			--radius: 10px;
+			--sidebar-w-expanded: 260px;
+			--sidebar-w-collapsed: 84px;
+			--sidebar-w: var(--sidebar-w-expanded);
+		}
+		html.sidebar-collapsed {
+			--sidebar-w: var(--sidebar-w-collapsed);
+		}
+		* { box-sizing: border-box; }
+		body {
+			margin: 0;
+			font-family: var(--font-sans);
+			color: var(--text);
+			background: var(--bg-page);
+			min-height: 100vh;
+			font-size: 14px;
+			line-height: 1.5;
+			-webkit-font-smoothing: antialiased;
+		}
+		a { color: var(--primary); text-decoration: none; }
+		a:hover { text-decoration: underline; }
+
+		.app-shell {
+			display: flex;
+			min-height: 100vh;
+		}
+
+		.sidebar {
+			width: var(--sidebar-w);
+			min-width: var(--sidebar-w);
+			flex-shrink: 0;
+			background: var(--bg-sidebar);
+			border-right: 1px solid var(--border);
+			display: flex;
+			flex-direction: column;
+			padding: 1rem 0;
+			overflow-x: hidden;
+			transition: width 0.22s ease, min-width 0.22s ease;
+		}
+		@media (prefers-reduced-motion: reduce) {
+			.sidebar { transition: none; }
+		}
+		.sidebar-header {
+			display: flex;
+			flex-direction: column;
+			gap: 0.5rem;
+			padding: 0.35rem 0.75rem 1rem;
+			border-bottom: 1px solid var(--border);
+			margin-bottom: 0.75rem;
+		}
+		.sidebar-header-row {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 0.5rem;
+		}
+		.sidebar-toggle {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 32px;
+			height: 32px;
+			padding: 0;
+			border: none;
+			background: transparent;
+			color: var(--text-muted);
+			border-radius: 8px;
+			cursor: pointer;
+			flex-shrink: 0;
+		}
+		.sidebar-toggle:hover {
+			background: #f1f5f9;
+			color: var(--text);
+		}
+		.sidebar-toggle:focus-visible {
+			outline: 2px solid var(--primary);
+			outline-offset: 2px;
+		}
+		.sidebar-toggle svg {
+			width: 18px;
+			height: 18px;
+		}
+		.sidebar-chevron-left { display: block; }
+		.sidebar-chevron-right { display: none; }
+		html.sidebar-collapsed .sidebar-chevron-left { display: none; }
+		html.sidebar-collapsed .sidebar-chevron-right { display: block; }
+		.sidebar-brand {
+			display: flex;
+			align-items: center;
+			min-width: 0;
+			flex: 1;
+			padding: 0.2rem 0 0.15rem;
+		}
+		html.sidebar-collapsed .sidebar-header {
+			padding: 0.5rem 0.5rem 0.65rem;
+			margin-bottom: 0.5rem;
+		}
+		html.sidebar-collapsed .sidebar-header-row {
+			justify-content: center;
+			gap: 0;
+		}
+		html.sidebar-collapsed .sidebar-brand {
+			display: none;
+		}
+		.sidebar-brand-img {
+			height: 40px;
+			width: auto;
+			max-width: 200px;
+			object-fit: contain;
+			object-position: left center;
+			display: block;
+		}
+		.nav-item {
+			display: flex;
+			align-items: center;
+			gap: 0.6rem;
+			padding: 0.6rem 1rem;
+			margin: 0 0.5rem;
+			border-radius: 8px;
+			font-size: 14px;
+			font-weight: 500;
+			color: var(--text-label);
+			text-decoration: none;
+			border: none;
+			background: transparent;
+			cursor: pointer;
+			width: calc(100% - 1rem);
+			text-align: left;
+			font: inherit;
+		}
+		.nav-item:hover { background: #f8fafc; color: var(--text-ink); text-decoration: none; }
+		.nav-item:focus-visible {
+			outline: none;
+			background: var(--primary-soft);
+			box-shadow: inset 0 0 0 2px var(--primary);
+		}
+		.nav-item.active {
+			background: var(--primary-soft);
+			color: var(--primary);
+			font-weight: 600;
+			box-shadow: inset 3px 0 0 var(--primary);
+		}
+		html.sidebar-collapsed .nav-item {
+			justify-content: center;
+			width: calc(100% - 1rem);
+			padding-left: 0.5rem;
+			padding-right: 0.5rem;
+		}
+		html.sidebar-collapsed .nav-item.active {
+			box-shadow: none;
+			background: var(--primary-soft);
+			color: var(--primary);
+		}
+		html.sidebar-collapsed .nav-label {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			padding: 0;
+			margin: -1px;
+			overflow: hidden;
+			clip: rect(0, 0, 0, 0);
+			white-space: nowrap;
+			border: 0;
+		}
+		.nav-item .ni-icon { width: 20px; height: 20px; opacity: 0.85; flex-shrink: 0; }
+		.nav-item.active .ni-icon { opacity: 1; }
+
+		.main {
+			flex: 1;
+			min-width: 0;
+			padding: 1.5rem 1.75rem 2rem;
+		}
+
+		.page-header {
+			display: flex;
+			flex-direction: column;
+			align-items: stretch;
+			gap: 0.75rem;
+			margin-bottom: 24px;
+		}
+		.page-header-title-row {
+			display: flex;
+			align-items: center;
+			flex-wrap: wrap;
+		}
+		.page-header h1 {
+			margin: 0;
+			font-size: 22px;
+			font-weight: 600;
+			line-height: 1.25;
+			letter-spacing: -0.015em;
+			color: #111827;
+		}
+
+		.section-heading {
+			margin: 0 0 10px;
+			font-size: 15px;
+			font-weight: 600;
+			line-height: 1.35;
+			color: #111827;
+		}
+
+		.leads-section {
+			margin-top: 24px;
+		}
+		.header-actions {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: flex-start;
+			justify-content: flex-end;
+			gap: 1rem;
+			width: 100%;
+		}
+		.header-cta-col {
+			display: flex;
+			flex-direction: column;
+			align-items: flex-end;
+			gap: 0.3rem;
+		}
+		.generate-hint {
+			margin: 0;
+			font-size: 13px;
+			font-weight: 500;
+			color: var(--text-label);
+			max-width: 18rem;
+			text-align: right;
+			line-height: 1.45;
+		}
+		.btn-generate-header {
+			position: relative;
+			min-width: 10.5rem;
+			padding: 0.5rem 1rem;
+			border-radius: 999px;
+		}
+		.btn-generate-header .btn-gen-icon {
+			width: 1.1rem;
+			height: 1.1rem;
+			flex-shrink: 0;
+		}
+		.btn-generate-header .btn-gen-spinner {
+			position: absolute;
+			left: 50%;
+			top: 50%;
+			width: 1.1rem;
+			height: 1.1rem;
+			margin: -0.55rem 0 0 -0.55rem;
+			animation: gen-spin 0.7s linear infinite;
+			display: none;
+			color: #fff;
+		}
+		.btn-generate-header.is-loading .btn-gen-spinner { display: block; }
+		.btn-generate-header.is-loading .btn-gen-icon,
+		.btn-generate-header.is-loading .btn-gen-text { opacity: 0; }
+		@keyframes gen-spin { to { transform: rotate(360deg); } }
+		.search-wrap {
+			position: relative;
+			display: flex;
+			align-items: center;
+		}
+		.search-wrap svg {
+			position: absolute;
+			left: 12px;
+			width: 18px;
+			height: 18px;
+			color: var(--text-muted);
+			pointer-events: none;
+		}
+		.search-wrap input[type="search"] {
+			width: min(280px, 42vw);
+			padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+			border: 1px solid var(--border);
+			border-radius: 999px;
+			font-size: 0.875rem;
+			background: var(--bg-card);
+			box-shadow: var(--shadow-sm);
+		}
+		.filters-search-wrap {
+			width: 100%;
+			display: block;
+		}
+		.filters-search-wrap input[type="search"] {
+			width: 100%;
+			max-width: none;
+			padding: 0.5rem 0.75rem 0.5rem 2.35rem;
+			border: 1px solid var(--border);
+			border-radius: 999px;
+			font-size: 0.875rem;
+			background: var(--bg-card);
+			box-shadow: var(--shadow-sm);
+		}
+		.filters-search-wrap input:focus {
+			outline: none;
+			border-color: var(--primary);
+			box-shadow: 0 0 0 3px var(--primary-soft);
+		}
+		.search-wrap input:focus {
+			outline: none;
+			border-color: var(--primary);
+			box-shadow: 0 0 0 3px var(--primary-soft);
+		}
+		.btn {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			gap: 0.35rem;
+			padding: 0.5rem 0.95rem;
+			font-size: 0.875rem;
+			font-weight: 600;
+			border-radius: 999px;
+			border: 1px solid var(--border);
+			background: var(--bg-card);
+			color: var(--text);
+			cursor: pointer;
+			text-decoration: none;
+			box-shadow: var(--shadow-sm);
+		}
+		.btn:hover { text-decoration: none; background: #f8fafc; }
+		.btn:focus-visible {
+			outline: 2px solid var(--primary);
+			outline-offset: 2px;
+		}
+		.btn-primary {
+			background: var(--primary);
+			color: #fff;
+			border-color: var(--primary);
+		}
+		.btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+		.btn-primary:active { background: var(--primary-active); border-color: var(--primary-active); }
+		.btn-primary:disabled {
+			opacity: 0.55;
+			cursor: not-allowed;
+		}
+		.btn-outline { background: transparent; }
+		.btn-secondary {
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			color: var(--text);
+			box-shadow: none;
+			font-weight: 600;
+		}
+		.btn-secondary:hover:not(:disabled) { background: #f8fafc; }
+		.btn-secondary:disabled {
+			opacity: 0.45;
+			cursor: not-allowed;
+		}
+		.btn-export-csv {
+			position: relative;
+			border-radius: 8px;
+			padding: 0.45rem 0.9rem;
+			font-size: 0.85rem;
+			gap: 0.4rem;
+		}
+		.btn-export-csv .btn-export-spinner {
+			display: none;
+			width: 14px;
+			height: 14px;
+			animation: export-spin 0.65s linear infinite;
+		}
+		.btn-export-csv.is-loading .btn-export-spinner { display: inline-block; }
+		.btn-export-csv.is-loading .btn-export-label { opacity: 0.65; }
+		@keyframes export-spin { to { transform: rotate(360deg); } }
+
+		.kpi-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+			gap: 0.75rem;
+			margin-bottom: 8px;
+			max-width: 960px;
+		}
+		.kpi-card {
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			padding: 0.75rem 0.9rem;
+			box-shadow: var(--shadow-sm);
+		}
+		.kpi-label {
+			font-size: 12px;
+			font-weight: 500;
+			color: var(--text-label);
+			margin-bottom: 0.25rem;
+		}
+		.kpi-value {
+			font-size: 24px;
+			font-weight: 700;
+			line-height: 1.15;
+			color: var(--text-ink);
+		}
+		.kpi-secondary {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.75rem 1.25rem;
+			margin: 8px 0 24px;
+			font-size: 14px;
+			line-height: 1.5;
+			font-weight: 500;
+			color: var(--text-label);
+			max-width: 960px;
+		}
+		.pipeline-hint {
+			font-size: 14px;
+			line-height: 1.55;
+			color: var(--text-label);
+			margin-bottom: 24px;
+		}
+
+		details.filters-drawer {
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			margin-bottom: 24px;
+			box-shadow: var(--shadow-sm);
+		}
+		details.filters-drawer summary {
+			padding: 0.65rem 1rem;
+			cursor: pointer;
+			font-weight: 600;
+			font-size: 15px;
+			line-height: 1.35;
+			color: #111827;
+			list-style: none;
+		}
+		details.filters-drawer summary::-webkit-details-marker { display: none; }
+		details.filters-drawer summary:focus-visible {
+			outline: 2px solid var(--primary);
+			outline-offset: 2px;
+			border-radius: 4px;
+		}
+		details.filters-drawer[open] summary { border-bottom: 1px solid var(--border); }
+		.filters-inner {
+			display: flex;
+			flex-direction: column;
+			gap: 1rem;
+			padding: 0.85rem 1rem 0.5rem;
+			font-size: 14px;
+			line-height: 1.5;
+		}
+		.filters-field-grid {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 0.65rem 1rem;
+			align-items: start;
+		}
+		@media (max-width: 560px) {
+			.filters-field-grid { grid-template-columns: 1fr; }
+		}
+		.filters-field-grid label {
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+			font-size: 12px;
+			font-weight: 500;
+			color: var(--text-label);
+		}
+		.filters-field-grid select {
+			padding: 0.35rem 0.5rem;
+			border: 1px solid var(--border);
+			border-radius: 6px;
+			font-size: 0.85rem;
+			width: 100%;
+			box-sizing: border-box;
+			background: var(--bg-card);
+			color: var(--text);
+		}
+		.filters-field-grid select:focus {
+			outline: none;
+			border-color: var(--primary);
+			box-shadow: 0 0 0 3px var(--primary-soft);
+		}
+		.apply-filters-row {
+			padding: 0.25rem 1rem 1rem;
+		}
+		.apply-filters-row button {
+			padding: 0.45rem 1rem;
+			border-radius: 8px;
+			border: 1px solid var(--primary);
+			background: var(--primary);
+			color: #fff;
+			font-weight: 600;
+			cursor: pointer;
+			font-size: 0.85rem;
+		}
+		.apply-filters-row button:hover {
+			background: var(--primary-hover);
+			border-color: var(--primary-hover);
+		}
+		.apply-filters-row button:active {
+			background: var(--primary-active);
+			border-color: var(--primary-active);
+		}
+		.apply-filters-row button:focus-visible {
+			outline: 2px solid var(--primary);
+			outline-offset: 2px;
+		}
+
+		.list-toolbar {
+			display: flex;
+			flex-direction: column;
+			align-items: stretch;
+			gap: 0.5rem;
+			margin-bottom: 0;
+		}
+		.list-toolbar-top {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			justify-content: space-between;
+			gap: 0.75rem;
+		}
+		.list-toolbar-meta {
+			display: flex;
+			flex-direction: column;
+			align-items: flex-end;
+			gap: 4px;
+			text-align: right;
+		}
+		.list-count {
+			font-size: 12px;
+			color: #6b7280;
+			font-weight: 500;
+		}
+		a.list-debug-link {
+			font-size: 12px;
+			font-weight: 500;
+			color: #6b7280;
+			text-decoration: none;
+			cursor: pointer;
+			line-height: 1.3;
+		}
+		a.list-debug-link:hover {
+			color: var(--primary);
+			text-decoration: underline;
+		}
+		.leads-columns {
+			display: grid;
+			grid-template-columns: 28px minmax(160px, 1.45fr) minmax(80px, 0.65fr) minmax(88px, 0.55fr) minmax(140px, 1.05fr) 108px 88px 118px 36px;
+			gap: 0.5rem 0.65rem;
+			align-items: center;
+			padding: 0 1rem 8px 0.35rem;
+			font-size: 12px;
+			font-weight: 500;
+			color: #6b7280;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+		}
+		@media (max-width: 1100px) {
+			.leads-columns { display: none; }
+		}
+
+		.lead-card {
+			display: grid;
+			grid-template-columns: 28px minmax(160px, 1.45fr) minmax(80px, 0.65fr) minmax(88px, 0.55fr) minmax(140px, 1.05fr) 108px 88px 118px 36px;
+			gap: 0.45rem 0.6rem;
+			align-items: center;
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			min-height: 56px;
+			padding: 8px 1rem 8px 0.35rem;
+			margin-bottom: 0.5rem;
+			box-shadow: var(--shadow-sm);
+			cursor: pointer;
+			transition: box-shadow 0.15s, border-color 0.15s, background 0.15s;
+		}
+		.lead-card:hover {
+			box-shadow: var(--shadow-md);
+			border-color: var(--primary-accent);
+			background: var(--primary-soft);
+		}
+		.lead-card.lead-card--active {
+			border-color: var(--primary);
+			background: var(--primary-soft);
+			box-shadow: inset 3px 0 0 var(--primary), var(--shadow-md);
+		}
+		.lead-card.lead-card--active:hover {
+			border-color: var(--primary);
+			background: var(--primary-soft);
+		}
+		.lead-card:focus-visible {
+			outline: none;
+			border-color: var(--primary);
+			box-shadow: 0 0 0 3px var(--primary-soft);
+		}
+		@media (max-width: 1100px) {
+			.leads-list {
+				overflow-x: auto;
+				margin-right: -0.5rem;
+				padding-bottom: 0.35rem;
+			}
+			.lead-card {
+				min-width: 1020px;
+			}
+		}
+
+		.lead-card .lc-menu { cursor: default; }
+		.lead-card .lc-menu button { cursor: pointer; }
+
+		.lc-rank {
+			font-size: 11px;
+			font-weight: 600;
+			color: #9ca3af;
+			text-align: right;
+			padding-right: 0.1rem;
+			font-variant-numeric: tabular-nums;
+			line-height: 1.2;
+			align-self: center;
+		}
+		.lc-name-block {
+			display: flex;
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 2px;
+			min-width: 0;
+		}
+		.lc-name-block .name {
+			font-weight: 500;
+			font-size: 14px;
+			line-height: 1.35;
+			color: #111827;
+		}
+		.lc-name-block .domain {
+			font-size: 12px;
+			font-weight: 400;
+			color: #6b7280;
+			line-height: 1.35;
+			word-break: break-all;
+		}
+		.lc-industry {
+			font-size: 13px;
+			font-weight: 500;
+			line-height: 1.4;
+			color: #374151;
+		}
+		.lc-source {
+			font-size: 12px;
+			font-weight: 500;
+			line-height: 1.35;
+			color: #4b5563;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+		}
+		.lc-source-empty { color: #9ca3af; font-weight: 400; }
+
+		.badge-pill {
+			display: inline-block;
+			padding: 4px 8px;
+			border-radius: 999px;
+			font-size: 11px;
+			font-weight: 500;
+			white-space: nowrap;
+			line-height: 1.2;
+		}
+		.badge-readiness-ready { background: #dcfce7; color: #166534; }
+		.badge-readiness-almost { background: #fef9c3; color: #854d0e; }
+		.badge-readiness-not { background: #fee2e2; color: #991b1b; }
+		.badge-priority {
+			font-weight: 500;
+			font-size: 11px;
+		}
+		.badge-priority-high { background: #fee2e2; color: #991b1b; }
+		.badge-priority-medium { background: #ffedd5; color: #c2410c; }
+		.badge-priority-low { background: #f1f5f9; color: #64748b; }
+
+		.lc-signal {
+			font-size: 12px;
+			font-weight: 400;
+			line-height: 1.4;
+			color: #4b5563;
+			display: -webkit-box;
+			-webkit-line-clamp: 2;
+			-webkit-box-orient: vertical;
+			overflow: hidden;
+			word-break: break-word;
+		}
+		.lc-signal-fallback { color: #6b7280; font-style: italic; font-weight: 400; }
+		.lc-signal-empty { color: #9ca3af; font-weight: 400; }
+
+		.lc-action {
+			font-size: 13px;
+			font-weight: 500;
+			line-height: 1.35;
+		}
+		.lc-action-contact {
+			font-weight: 600;
+			color: var(--primary);
+		}
+		.lc-action-muted {
+			font-weight: 500;
+			color: #6b7280;
+		}
+
+		.menu-wrap { position: relative; }
+		.menu-trigger {
+			border: none;
+			background: transparent;
+			padding: 0.35rem;
+			border-radius: 6px;
+			cursor: pointer;
+			line-height: 0;
+			color: var(--text-muted);
+		}
+		.menu-trigger:hover { background: #f1f5f9; color: var(--text); }
+		.menu-trigger:focus-visible {
+			outline: 2px solid var(--primary);
+			outline-offset: 2px;
+		}
+		.menu-dropdown {
+			display: none;
+			position: absolute;
+			right: 0;
+			top: 100%;
+			margin-top: 2px;
+			min-width: 160px;
+			background: var(--bg-card);
+			border: 1px solid var(--border);
+			border-radius: 10px;
+			box-shadow: var(--shadow-md);
+			z-index: 30;
+			padding: 0.35rem;
+		}
+		.menu-dropdown.open { display: block; }
+		.menu-dropdown button,
+		.menu-dropdown a {
+			display: flex;
+			align-items: center;
+			gap: 0.5rem;
+			width: 100%;
+			padding: 0.45rem 0.6rem;
+			border: none;
+			background: transparent;
+			font-size: 0.85rem;
+			text-align: left;
+			cursor: pointer;
+			border-radius: 6px;
+			color: var(--text);
+			text-decoration: none;
+		}
+		.menu-dropdown a:hover,
+		.menu-dropdown button:hover:not(:disabled) { background: #f8fafc; }
+		.menu-dropdown a:focus-visible,
+		.menu-dropdown button:focus-visible {
+			outline: none;
+			background: var(--primary-soft);
+			box-shadow: inset 0 0 0 2px var(--primary);
+		}
+		.menu-dropdown button:disabled {
+			opacity: 0.45;
+			cursor: not-allowed;
+		}
+		.menu-danger { color: var(--danger-text) !important; }
+
+		.lead-card-placeholder {
+			text-align: center;
+			padding: 2rem 1rem;
+			background: var(--bg-card);
+			border: 1px dashed var(--border);
+			border-radius: var(--radius);
+			color: var(--text-muted);
+			font-size: 0.9rem;
+		}
+
+		.drawer-backdrop {
+			display: none;
+			position: fixed;
+			inset: 0;
+			background: rgba(15, 23, 42, 0.35);
+			z-index: 100;
+			opacity: 0;
+			transition: opacity 0.2s;
+		}
+		.drawer-backdrop.visible {
+			display: block;
+			opacity: 1;
+		}
+		.drawer {
+			position: fixed;
+			top: 0;
+			right: 0;
+			width: min(520px, 100vw - 24px);
+			height: 100%;
+			background: var(--bg-card);
+			z-index: 110;
+			box-shadow: -8px 0 32px rgba(15, 23, 42, 0.12);
+			transform: translateX(100%);
+			transition: transform 0.22s ease;
+			display: flex;
+			flex-direction: column;
+		}
+		.drawer.open { transform: translateX(0); }
+		.drawer-header {
+			padding: 1.1rem 1.25rem;
+			border-bottom: 1px solid var(--border);
+			display: flex;
+			align-items: flex-start;
+			justify-content: space-between;
+			gap: 0.75rem;
+		}
+		.drawer-header-main {
+			flex: 1;
+			min-width: 0;
+		}
+		.drawer-header h2 {
+			margin: 0;
+			font-size: 18px;
+			font-weight: 600;
+			line-height: 1.3;
+			color: var(--text-ink);
+		}
+		.drawer-header .sub {
+			font-size: 13px;
+			font-weight: 400;
+			color: var(--text-label);
+			margin-top: 8px;
+			word-break: break-all;
+			line-height: 1.45;
+		}
+		.drawer-header-actions {
+			display: flex;
+			align-items: flex-start;
+			gap: 0.45rem;
+			flex-shrink: 0;
+		}
+		.drawer-lang-toggle {
+			display: flex;
+			align-items: center;
+			gap: 0.2rem;
+			padding: 0.2rem 0.35rem;
+			border-radius: 8px;
+			background: #f8fafc;
+			border: 1px solid var(--border);
+			font-size: 11px;
+			font-weight: 600;
+			color: var(--text-label);
+		}
+		.drawer-lang-btn {
+			margin: 0;
+			padding: 0.2rem 0.35rem;
+			border: none;
+			background: transparent;
+			color: var(--text-label);
+			font: inherit;
+			font-weight: 600;
+			cursor: pointer;
+			border-radius: 6px;
+			line-height: 1.2;
+		}
+		.drawer-lang-btn:hover { color: var(--text-ink); background: rgba(148, 163, 184, 0.15); }
+		.drawer-lang-btn.is-active {
+			background: #e2e8f0;
+			color: var(--text-ink);
+		}
+		.drawer-lang-btn:focus-visible {
+			outline: 2px solid var(--primary);
+			outline-offset: 1px;
+		}
+		.drawer-lang-sep {
+			color: #cbd5e1;
+			user-select: none;
+			font-weight: 400;
+		}
+		.drawer-close {
+			border: none;
+			background: #f1f5f9;
+			width: 36px;
+			height: 36px;
+			border-radius: 8px;
+			cursor: pointer;
+			font-size: 1.25rem;
+			line-height: 1;
+			color: var(--text-muted);
+			flex-shrink: 0;
+		}
+		.drawer-close:hover { background: #e2e8f0; color: var(--text); }
+		.drawer-close:focus-visible {
+			outline: 2px solid var(--primary);
+			outline-offset: 2px;
+		}
+		.drawer-body {
+			padding: 20px 1.25rem 1.5rem;
+			overflow-y: auto;
+			flex: 1;
+			font-size: 14px;
+			line-height: 1.6;
+			color: var(--text-ink);
+		}
+		.drawer-section {
+			margin-bottom: 22px;
+		}
+		.drawer-section h3 {
+			margin: 0 0 8px;
+			font-size: 18px;
+			font-weight: 600;
+			line-height: 1.3;
+			letter-spacing: 0;
+			text-transform: none;
+			color: var(--text-ink);
+		}
+		.drawer-section p {
+			margin: 0;
+			font-size: 14px;
+			font-weight: 500;
+			line-height: 1.6;
+			color: var(--text-ink);
+		}
+		.drawer-callout {
+			background: #f8fafc;
+			border-radius: 10px;
+			padding: 14px 1rem;
+			border: 1px solid var(--border);
+		}
+		.drawer-callout.drawer-callout-decision { border-left: 4px solid var(--primary); background: var(--primary-soft); }
+		.drawer-callout.drawer-callout-decision.drawer-callout-warn { background: #fff8e6; border-left-color: #c90; }
+		.drawer-callout.drawer-callout-why { border-left: 4px solid #f59e0b; background: #fffaf0; }
+		.drawer-field-label {
+			font-size: 12px;
+			font-weight: 500;
+			color: var(--text-label);
+			text-transform: none;
+			letter-spacing: 0.01em;
+			margin: 12px 0 8px;
+		}
+		.drawer-field-label:first-child { margin-top: 0; }
+		.drawer-dl {
+			display: grid;
+			grid-template-columns: minmax(118px, 40%) 1fr;
+			gap: 8px 0.75rem;
+			font-size: 14px;
+			margin: 0;
+			line-height: 1.5;
+		}
+		.drawer-dl dt {
+			margin: 0;
+			font-weight: 500;
+			color: var(--text-label);
+			font-size: 12px;
+		}
+		.drawer-dl dd {
+			margin: 0;
+			word-break: break-word;
+			font-weight: 500;
+			font-size: 14px;
+			color: var(--text-ink);
+		}
+		.drawer-dl dd.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; font-weight: 400; }
+		.drawer-badge {
+			display: inline-block;
+			padding: 0.2rem 0.45rem;
+			border-radius: 4px;
+			font-size: 12px;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+		}
+		.drawer-badge-high { background: #fee2e2; color: #991b1b; }
+		.drawer-badge-medium { background: #fef3c7; color: #92400e; }
+		.drawer-badge-low { background: #e5e7eb; color: #374151; }
+		.drawer-list-copy ul {
+			margin: 8px 0 0;
+			padding-left: 1.15rem;
+			font-size: 14px;
+			line-height: 1.6;
+			font-weight: 500;
+			color: var(--text-ink);
+		}
+		.drawer-list-copy.drawer-empty { color: var(--text-muted); }
+
+		/* Drawer: ICP + Suggested action — shared insight card shell */
+		.drawer-insight-card {
+			margin-bottom: 1rem;
+			padding: 0.75rem 0.85rem;
+			background: #f8fafc;
+			border: 1px solid var(--border);
+			border-radius: 10px;
+		}
+		/* Primary left accent: ICP + Suggested action (identical treatment) */
+		.drawer-insight-card--accent {
+			border-left: 3px solid color-mix(in srgb, var(--primary) 45%, var(--border));
+		}
+		.drawer-insight-card__header {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: 0.75rem;
+			margin-bottom: 0.5rem;
+			min-height: 30px;
+		}
+		.drawer-insight-card__title {
+			margin: 0;
+			flex: 1;
+			min-width: 0;
+			font-size: 11px;
+			font-weight: 700;
+			letter-spacing: 0.06em;
+			text-transform: uppercase;
+			color: var(--text-label);
+			line-height: 1.3;
+		}
+
+		/* Suggested action — full page / embedded partials (not drawer insight card) */
+		.suggested-action:not(.drawer-insight-card) {
+			margin-bottom: 1.1rem;
+			padding: 0.65rem 0.75rem;
+			background: #f8fafc;
+			border: 1px solid var(--border);
+			border-radius: 10px;
+		}
+		.suggested-action__title {
+			margin: 0 0 0.35rem;
+			font-size: 11px;
+			font-weight: 700;
+			letter-spacing: 0.06em;
+			text-transform: uppercase;
+			color: var(--text-label);
+		}
+		.drawer-insight-card.suggested-action .suggested-action__body {
+			margin-top: 0;
+		}
+		.suggested-action__body {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: 0.35rem 0.5rem;
+		}
+		/* Unified status pills (drawer): same geometry as ICP tier; color = meaning */
+		.drawer-icp-level,
+		.suggested-action__badge {
+			display: inline-block;
+			padding: 0.22rem 0.6rem;
+			border-radius: 999px;
+			font-size: 12px;
+			font-weight: 700;
+			letter-spacing: 0.02em;
+			line-height: 1.3;
+			border: 1px solid transparent;
+			user-select: none;
+			pointer-events: none;
+		}
+		.suggested-action__badge--contact {
+			background: var(--badge-success-bg);
+			color: var(--badge-success-fg);
+			border-color: var(--badge-success-border);
+		}
+		.suggested-action__badge--research {
+			background: var(--badge-info-bg);
+			color: var(--badge-info-fg);
+			border-color: var(--badge-info-border);
+		}
+		.suggested-action__badge--ignore {
+			background: var(--badge-neutral-bg);
+			color: var(--badge-neutral-fg);
+			border-color: var(--badge-neutral-border);
+		}
+		.suggested-action__reason {
+			margin: 0.45rem 0 0;
+			font-size: 13px;
+			font-weight: 500;
+			line-height: 1.45;
+			color: var(--text-muted);
+		}
+		.suggested-action__reason-label {
+			font-weight: 600;
+			color: var(--text-label);
+			margin-right: 0.35rem;
+		}
+		.suggested-action__help-wrap {
+			position: relative;
+			display: inline-flex;
+			align-items: center;
+			align-self: center;
+			flex-shrink: 0;
+		}
+		.suggested-action__help-btn {
+			display: inline-flex;
+			align-items: center;
+			justify-content: center;
+			width: 22px;
+			height: 22px;
+			margin: 0;
+			padding: 0;
+			border: none;
+			background: transparent;
+			color: #94a3b8;
+			border-radius: 999px;
+			cursor: pointer;
+			line-height: 1;
+			transition: color 0.15s, background 0.15s, border-color 0.15s, box-shadow 0.15s;
+		}
+		.suggested-action__help-btn:hover,
+		.suggested-action__help-btn:focus-visible {
+			color: #64748b;
+			background: rgba(148, 163, 184, 0.22);
+			outline: none;
+		}
+		.suggested-action__help-ico {
+			font-size: 11px;
+			font-weight: 700;
+			font-style: italic;
+			font-family: Georgia, "Times New Roman", serif;
+			line-height: 1;
+		}
+		/* Drawer: clearer help control (matches across ICP + Suggested action) */
+		.drawer-body .suggested-action__help-btn {
+			width: 30px;
+			height: 30px;
+			border: 1px solid var(--border);
+			background: #fff;
+			color: var(--primary);
+			box-shadow: var(--shadow-sm);
+		}
+		.drawer-body .suggested-action__help-btn:hover {
+			background: var(--primary-soft);
+			border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+			color: var(--primary-hover);
+			box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+		}
+		.drawer-body .suggested-action__help-btn:focus-visible {
+			outline: 2px solid color-mix(in srgb, var(--primary) 55%, white);
+			outline-offset: 2px;
+			background: var(--primary-soft);
+			border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+			color: var(--primary-hover);
+		}
+		.drawer-body .suggested-action__help-ico {
+			font-size: 12px;
+		}
+		.drawer-body .suggested-action__help-popover {
+			left: auto;
+			right: 0;
+		}
+		.suggested-action__help-popover {
+			position: absolute;
+			z-index: 100;
+			left: 0;
+			top: calc(100% + 8px);
+			width: min(300px, calc(100vw - 2rem));
+			max-height: min(70vh, 420px);
+			overflow-y: auto;
+			padding: 0.65rem 0.7rem 0.75rem;
+			background: #fff;
+			border: 1px solid var(--border);
+			border-radius: 10px;
+			box-shadow: 0 10px 40px rgba(15, 23, 42, 0.12);
+			opacity: 0;
+			visibility: hidden;
+			transform: translateY(-6px);
+			transition: opacity 0.12s ease, transform 0.12s ease, visibility 0.12s;
+			pointer-events: none;
+		}
+		.suggested-action__help-wrap:hover .suggested-action__help-popover,
+		.suggested-action__help-wrap:focus-within .suggested-action__help-popover,
+		.suggested-action__help-wrap.is-open .suggested-action__help-popover {
+			opacity: 1;
+			visibility: visible;
+			transform: translateY(0);
+			pointer-events: auto;
+		}
+		.suggested-action__help-intro {
+			margin: 0 0 0.45rem;
+			font-size: 11px;
+			font-weight: 700;
+			letter-spacing: 0.04em;
+			text-transform: uppercase;
+			color: var(--text-label);
+		}
+		.suggested-action__help-items {
+			margin: 0;
+			padding: 0;
+		}
+		.suggested-action__help-item {
+			padding: 0.45rem 0.5rem;
+			border-radius: 8px;
+			margin-bottom: 0.35rem;
+			border: 1px solid transparent;
+		}
+		.suggested-action__help-item:last-child {
+			margin-bottom: 0;
+		}
+		/* Active recommendation in help tooltip: selected state only, not button-like */
+		.suggested-action__help-item.is-current {
+			background: var(--primary-soft);
+			border-color: color-mix(in srgb, var(--primary) 32%, var(--border));
+			box-shadow: none;
+		}
+		.suggested-action__help-item-title {
+			display: block;
+			font-size: 12px;
+			font-weight: 700;
+			color: var(--text-ink);
+			margin-bottom: 0.28rem;
+		}
+		.suggested-action__help-item p {
+			margin: 0.12rem 0;
+			font-size: 12px;
+			line-height: 1.45;
+			color: #64748b;
+			font-weight: 500;
+		}
+		.drawer-gaps {
+			font-size: 13px;
+			font-weight: 500;
+			color: var(--text-ink);
+			background: #fff8e6;
+			border: 1px solid #fde68a;
+			border-radius: 10px;
+			padding: 0.65rem 0.75rem;
+			margin-bottom: 1rem;
+			line-height: 1.45;
+		}
+		.drawer-gaps strong { display: block; font-size: 12px; font-weight: 600; color: #92400e; margin-bottom: 0.35rem; }
+		.drawer-gaps ul { margin: 0.35rem 0 0; padding-left: 1.1rem; }
+		.drawer-gaps li { margin: 0.15rem 0; }
+		.drawer-panel {
+			margin-bottom: 1.1rem;
+		}
+		.drawer-panel-title {
+			margin: 0 0 0.45rem;
+			font-size: 11px;
+			font-weight: 700;
+			letter-spacing: 0.06em;
+			text-transform: uppercase;
+			color: var(--text-label);
+		}
+		.drawer-panel-text {
+			margin: 0;
+			font-size: 14px;
+			font-weight: 500;
+			line-height: 1.55;
+			color: var(--text-ink);
+		}
+		.drawer-signal-list {
+			list-style: none;
+			margin: 0;
+			padding: 0;
+		}
+		.drawer-signal-list li {
+			position: relative;
+			padding-left: 1.35rem;
+			margin: 0.35rem 0;
+			font-size: 13px;
+			font-weight: 500;
+			line-height: 1.45;
+			color: var(--text-ink);
+		}
+		.drawer-signal-list li::before {
+			content: '';
+			position: absolute;
+			left: 0;
+			top: 0.35rem;
+			width: 7px;
+			height: 7px;
+			border-radius: 50%;
+			background: var(--primary);
+		}
+		.drawer-signal-list li.is-weak::before {
+			background: #cbd5e1;
+		}
+		/* ICP Fit bullets: same typography as Reason line; dots stay visible but secondary */
+		#drawer-icp-reasons.drawer-signal-list li {
+			font-size: 13px;
+			font-weight: 500;
+			line-height: 1.45;
+			color: var(--text-muted);
+		}
+		#drawer-icp-reasons.drawer-signal-list li::before {
+			background: #94a3b8;
+		}
+		#drawer-icp-reasons.drawer-signal-list li.is-weak::before {
+			background: #cbd5e1;
+		}
+		/* Current tier in ICP help popover: tint matches badge semantics */
+		.suggested-action__help-item.is-current-icp.is-tier-high {
+			background: color-mix(in srgb, var(--badge-success-bg) 88%, white);
+			border-color: color-mix(in srgb, var(--badge-success-border) 45%, var(--border));
+			box-shadow: none;
+		}
+		.suggested-action__help-item.is-current-icp.is-tier-medium {
+			background: color-mix(in srgb, var(--badge-warning-bg) 88%, white);
+			border-color: color-mix(in srgb, var(--badge-warning-border) 42%, var(--border));
+			box-shadow: none;
+		}
+		.suggested-action__help-item.is-current-icp.is-tier-low {
+			background: color-mix(in srgb, var(--badge-danger-bg) 88%, white);
+			border-color: color-mix(in srgb, var(--badge-danger-border) 40%, var(--border));
+			box-shadow: none;
+		}
+		.drawer-icp-help-item--score {
+			margin-top: 0.15rem;
+			padding-top: 0.5rem;
+			border-top: 1px solid var(--border);
+		}
+		.drawer-icp-row {
+			display: flex;
+			align-items: center;
+			flex-wrap: wrap;
+			gap: 0.5rem 0.75rem;
+			margin-bottom: 0.5rem;
+		}
+		.drawer-icp-level--high {
+			background: var(--badge-success-bg);
+			color: var(--badge-success-fg);
+			border-color: var(--badge-success-border);
+		}
+		.drawer-icp-level--medium {
+			background: var(--badge-warning-bg);
+			color: var(--badge-warning-fg);
+			border-color: var(--badge-warning-border);
+		}
+		.drawer-icp-level--low {
+			background: var(--badge-danger-bg);
+			color: var(--badge-danger-fg);
+			border-color: var(--badge-danger-border);
+		}
+		.drawer-icp-score-line {
+			font-size: 13px;
+			font-weight: 500;
+			color: var(--text-muted);
+		}
+		/* ICP one-line summary — same pattern as Suggested action reason */
+		p.drawer-icp-reason.suggested-action__reason {
+			margin-top: 0.35rem;
+			margin-bottom: 0.55rem;
+		}
+		.drawer-dl--compact {
+			grid-template-columns: minmax(100px, 38%) 1fr;
+			gap: 6px 0.65rem;
+		}
+		.drawer-dl--compact dt { font-size: 11px; }
+		.drawer-dl--compact dd { font-size: 13px; }
+		.drawer-details {
+			margin: 1rem 0;
+			border: 1px solid var(--border);
+			border-radius: 10px;
+			background: #f8fafc;
+			overflow: hidden;
+		}
+		.drawer-details summary {
+			padding: 0.65rem 0.85rem;
+			font-size: 13px;
+			font-weight: 600;
+			color: var(--text-ink);
+			cursor: pointer;
+			list-style: none;
+			display: flex;
+			align-items: center;
+			gap: 0.35rem;
+		}
+		.drawer-details summary::-webkit-details-marker { display: none; }
+		.drawer-details summary::before {
+			content: '';
+			width: 0;
+			height: 0;
+			border-left: 5px solid var(--text-muted);
+			border-top: 4px solid transparent;
+			border-bottom: 4px solid transparent;
+			transition: transform 0.15s;
+		}
+		.drawer-details[open] summary::before {
+			transform: rotate(90deg);
+		}
+		.drawer-details .drawer-dl {
+			padding: 0 0.85rem 0.85rem;
+			margin-top: 0;
+		}
+		.drawer-details .drawer-muted-note {
+			font-size: 12px;
+			color: var(--text-muted);
+			margin: 0 0.85rem 0.75rem;
+			line-height: 1.4;
+		}
+		.drawer-full-link {
+			display: inline-block;
+			margin-top: 0.25rem;
+			font-size: 13px;
+			font-weight: 600;
+			color: var(--primary);
+			text-decoration: none;
+		}
+		.drawer-full-link:hover { text-decoration: underline; }
+	</style>
+</head>
+<body>
+	<script>
+	(function () {
+		try {
+			if (localStorage.getItem('salesradar.sidebarCollapsed') === 'true') {
+				document.documentElement.classList.add('sidebar-collapsed');
+			}
+		} catch (e) {}
+	})();
+	</script>
+	<div class="app-shell">
+			<aside class="sidebar" aria-label="Main navigation">
+				<div class="sidebar-header">
+					<div class="sidebar-header-row">
+						<div class="sidebar-brand">
+							<img class="sidebar-brand-img" src="/static/Logo-Sales-Radar.png" alt="Sales Radar" width="240" height="48" decoding="async" />
+						</div>
+						<button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-expanded="true" aria-controls="sidebar-nav" aria-label="Collapse sidebar">
+							<svg class="sidebar-chevron-left" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M15 18l-6-6 6-6"/></svg>
+							<svg class="sidebar-chevron-right" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 18l6-6-6-6"/></svg>
+						</button>
+					</div>
+				</div>
+				<nav id="sidebar-nav" aria-label="Primary">
+				<a href="/leads" class="nav-item active" aria-current="page" title="Lead List">
+					<svg class="ni-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+					<span class="nav-label">Lead List</span>
+				</a>
+				<a href="/settings" class="nav-item" title="Settings">
+					<svg class="ni-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543-.94-3.31.826-2.37 2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+					<span class="nav-label">Settings</span>
+				</a>
+				</nav>
+			</aside>
+
+			<main class="main">
+				<form method="get" action="/leads" id="form-leads">
+				{{range .PreserveParams}}
+				<input type="hidden" name="{{.Key}}" value="{{.Value}}">
+				{{end}}
+				<header class="page-header">
+					<div class="page-header-title-row">
+						<h1>Lead List</h1>
+					</div>
+					<div class="header-actions">
+						<div class="header-cta-col">
+							<button type="button" class="btn btn-primary btn-generate-header" id="btn-generate-header" aria-busy="false">
+								<svg class="btn-gen-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+								<svg class="btn-gen-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke-width="3" stroke-dasharray="48" stroke-dashoffset="12" stroke-linecap="round"/></svg>
+								<span class="btn-gen-text">Generate Leads</span>
+							</button>
+							<p class="generate-hint">Discover new leads from multiple sources</p>
+						</div>
+					</div>
+				</header>
+
+				{{if .Summary.HasRun}}
+				<div class="kpi-grid" id="kpis">
+					<div class="kpi-card">
+						<div class="kpi-label" title="Total leads stored after quality gate.">Total Leads</div>
+						<div class="kpi-value">{{if .Summary.TotalLeads}}{{.Summary.TotalLeads}}{{else}}0{{end}}</div>
+					</div>
+					<div class="kpi-card">
+						<div class="kpi-label" title="Ready for sales outreach.">Contact-Ready</div>
+						<div class="kpi-value">{{if .Summary.ContactReady}}{{.Summary.ContactReady}}{{else}}0{{end}}</div>
+					</div>
+					<div class="kpi-card">
+						<div class="kpi-label" title="Needs validation before contact.">Pending Review</div>
+						<div class="kpi-value">{{if .Summary.PendingReview}}{{.Summary.PendingReview}}{{else}}0{{end}}</div>
+					</div>
+				</div>
+				<div class="kpi-secondary">
+					<span title="Rejected leads"><strong>Rejected:</strong> {{if .Summary.Rejected}}{{.Summary.Rejected}}{{else}}0{{end}}</span>
+					<span><strong>Duplicates Removed:</strong> {{if .Summary.Duplicates}}{{.Summary.Duplicates}}{{else}}0{{end}}</span>
+					<span><strong>Merged Leads:</strong> {{if .Summary.Merged}}{{.Summary.Merged}}{{else}}0{{end}}</span>
+				</div>
+				{{else}}
+					{{if not .PipelineHasRun}}
+					<p class="pipeline-hint">No data yet. Click <strong>Generate Leads</strong> to start discovering companies.</p>
+					{{else if eq .TotalLeadsInDB 0}}
+					<p class="pipeline-hint">No leads found. Try enabling more sources or adjusting filters.</p>
+					{{end}}
+				{{end}}
+
+				<details class="filters-drawer">
+					<summary>Filters &amp; sorting</summary>
+					<div class="filters-inner">
+						<label class="search-wrap filters-search-wrap">
+							<svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+							<input type="search" name="q" value="{{.Filter.Query}}" placeholder="Search company or domain" autocomplete="off" aria-label="Search company or domain">
+						</label>
+						<div class="filters-field-grid">
+						<label>ICP match
+							<select name="icp_match">
+								<option value="">any</option>
+								<option value="high" {{if eq .Filter.ICPMatch "high"}}selected{{end}}>high</option>
+								<option value="medium" {{if eq .Filter.ICPMatch "medium"}}selected{{end}}>medium</option>
+								<option value="low" {{if eq .Filter.ICPMatch "low"}}selected{{end}}>low</option>
+							</select>
+						</label>
+						<label>Sales status
+							<select name="sales_status">
+								<option value="">any</option>
+								<option value="qualified" {{if eq .Filter.SalesStatus "qualified"}}selected{{end}}>qualified</option>
+								<option value="partial_data" {{if eq .Filter.SalesStatus "partial_data"}}selected{{end}}>partial_data</option>
+								<option value="needs_manual_review" {{if eq .Filter.SalesStatus "needs_manual_review"}}selected{{end}}>needs_manual_review</option>
+							</select>
+						</label>
+						<label>Action
+							<select name="action">
+								<option value="">any</option>
+								<option value="Contact" {{if eq .Filter.Action "Contact"}}selected{{end}}>Contact</option>
+								<option value="Research first" {{if eq .Filter.Action "Research first"}}selected{{end}}>Research first</option>
+								<option value="Ignore" {{if eq .Filter.Action "Ignore"}}selected{{end}}>Ignore</option>
+							</select>
+						</label>
+						<label>Lead status
+							<select name="lead_status">
+								<option value="">any</option>
+								<option value="new" {{if eq .Filter.LeadStatus "new"}}selected{{end}}>new</option>
+								<option value="needs_review" {{if eq .Filter.LeadStatus "needs_review"}}selected{{end}}>needs_review</option>
+								<option value="discarded" {{if eq .Filter.LeadStatus "discarded"}}selected{{end}}>discarded</option>
+							</select>
+						</label>
+						<label>Industry
+							<select name="industry">
+								<option value="">any</option>
+								{{range .Industries}}
+								<option value="{{.}}" {{if eq $.Filter.Industry .}}selected{{end}}>{{.}}</option>
+								{{end}}
+							</select>
+						</label>
+						<label>Sort by
+							<select name="sort" id="sort-select">
+								<option value="priority" {{if eq .Filter.SortBy "priority"}}selected{{end}}>priority score</option>
+								<option value="action" {{if eq .Filter.SortBy "action"}}selected{{end}}>action (Contact first)</option>
+								<option value="company" {{if eq .Filter.SortBy "company"}}selected{{end}}>company</option>
+								<option value="completeness" {{if eq .Filter.SortBy "completeness"}}selected{{end}}>data completeness</option>
+								<option value="confidence" {{if eq .Filter.SortBy "confidence"}}selected{{end}}>confidence</option>
+							</select>
+						</label>
+						<label>Order
+							<select name="order">
+								<option value="asc" {{if .Filter.OrderAsc}}selected{{end}}>ascending</option>
+								<option value="desc" {{if not .Filter.OrderAsc}}selected{{end}}>descending</option>
+							</select>
+						</label>
+						</div>
+					</div>
+					<div class="apply-filters-row">
+						<button type="submit">Apply filters</button>
+					</div>
+				</details>
+
+				<section class="leads-section" aria-labelledby="leads-heading">
+				<h2 id="leads-heading" class="section-heading">Leads</h2>
+				<div class="list-toolbar">
+					<div class="list-toolbar-top">
+						{{if gt .Total 0}}
+						<button type="button" class="btn btn-secondary btn-export-csv" id="btn-export-csv" aria-busy="false">
+							<span class="btn-export-icon" aria-hidden="true">⬇</span>
+							<span class="btn-export-label">Export CSV</span>
+							<svg class="btn-export-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke-width="3" stroke-dasharray="48" stroke-dashoffset="12" stroke-linecap="round"/></svg>
+						</button>
+						{{else}}
+						<button type="button" class="btn btn-secondary btn-export-csv" id="btn-export-csv" disabled title="No data to export">
+							<span class="btn-export-icon" aria-hidden="true">⬇</span>
+							<span class="btn-export-label">Export CSV</span>
+							<svg class="btn-export-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke-width="3" stroke-dasharray="48" stroke-dashoffset="12" stroke-linecap="round"/></svg>
+						</button>
+						{{end}}
+						<div class="list-toolbar-meta">
+							<span class="list-count">{{.Total}} lead(s) shown</span>
+							<a class="list-debug-link" href="/debug{{if .QueryString}}?{{.QueryString}}{{end}}" aria-label="Open pipeline debug page">[Debug]</a>
+						</div>
+					</div>
+				</div>
+
+				<div class="leads-columns" aria-hidden="true">
+					<span>#</span>
+					<span>Company</span>
+					<span>Industry</span>
+					<span>Source</span>
+					<span>Signal</span>
+					<span>Readiness</span>
+					<span>Priority</span>
+					<span>Action</span>
+					<span></span>
+				</div>
+
+				<div class="leads-list">
+					{{range $i, $lead := .Leads}}
+					<div class="lead-card" role="button" tabindex="0" data-href="/leads/{{$lead.ID}}" data-lead-id="{{$lead.ID}}" aria-label="Open details for {{if $lead.Company}}{{$lead.Company}}{{else}}lead {{$lead.ID}}{{end}}">
+						<div class="lc-rank" aria-hidden="true">{{add $i 1}}</div>
+						<div class="lc-name-block">
+							<div class="name">{{if $lead.Company}}{{$lead.Company}}{{else}}—{{end}}</div>
+							<div class="domain">{{if $lead.OfficialDomain}}{{$lead.OfficialDomain}}{{else if $lead.WebsiteDomain}}{{$lead.WebsiteDomain}}{{else}}—{{end}}</div>
+						</div>
+						<div class="lc-industry">{{if $lead.Industry}}{{$lead.Industry}}{{else}}—{{end}}</div>
+						<div class="lc-source-cell">{{sourceLabel $lead}}</div>
+						<div class="lc-signal-cell">{{signalPreview $lead}}</div>
+						<div class="lc-readiness">{{readinessBadge $lead}}</div>
+						<div class="lc-priority">{{priorityPill $lead.PriorityScore $lead.ICPMatch}}</div>
+						<div class="lc-action-cell">{{actionLabel $lead}}</div>
+						<div class="lc-menu" onclick="event.stopPropagation()">
+							<div class="menu-wrap">
+								<button type="button" class="menu-trigger" aria-haspopup="true" aria-expanded="false" aria-label="More actions">
+									<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+								</button>
+								<div class="menu-dropdown" role="menu" onclick="event.stopPropagation()">
+									<a href="/leads/{{$lead.ID}}" role="menuitem">Edit</a>
+									<button type="button" role="menuitem" disabled title="Delete is not available in this UI">Delete</button>
+								</div>
+							</div>
+						</div>
+						<div class="lead-detail-source" hidden aria-hidden="true">
+							{{$sa := suggestedAction $lead}}
+							<span class="ldf-suggested-label">{{$sa.Label}}</span>
+							<span class="ldf-suggested-label-id">{{drawerSuggestedLabelID $sa.Label}}</span>
+							<span class="ldf-suggested-variant">{{$sa.Variant}}</span>
+							<span class="ldf-suggested-reason">{{$sa.Reason}}</span>
+							<span class="ldf-suggested-reason-id">{{suggestedActionReasonID $lead}}</span>
+							<span class="ldf-accept-explanation">{{$lead.AcceptExplanation}}</span>
+							<ul class="ldf-missing-opt">{{range $lead.MissingOptional}}<li>{{.}}</li>{{end}}</ul>
+							<span class="ldf-reason-for-fit">{{$lead.ReasonForFit}}</span>
+							<span class="ldf-reason-for-fit-id">{{drawerTranslateNarrativeToID $lead.ReasonForFit}}</span>
+							<span class="ldf-sales-angle">{{$lead.SalesAngle}}</span>
+							<span class="ldf-sales-angle-id">{{drawerTranslateSalesAngleToID $lead.SalesAngle}}</span>
+							<span class="ldf-why-now">{{$lead.WhyNow}}</span>
+							<span class="ldf-why-now-id">{{drawerTranslateWhyNowToID $lead.WhyNow}}</span>
+							<span class="ldf-why-strength" data-val="{{$lead.WhyNowStrength}}"></span>
+							<span class="ldf-company">{{$lead.Company}}</span>
+							<span class="ldf-official-domain">{{$lead.OfficialDomain}}</span>
+							<span class="ldf-linkedin-url" data-url="{{$lead.LinkedInURL}}"></span>
+							<span class="ldf-country">{{$lead.CountryRegion}}</span>
+							<span class="ldf-industry">{{$lead.Industry}}</span>
+							<span class="ldf-employee">{{if $lead.EmployeeSize}}{{$lead.EmployeeSize}}{{else}}{{$lead.Size}}{{end}}</span>
+							<span class="ldf-data-completeness">{{$lead.DataCompleteness}}</span>
+							<span class="ldf-icp-score">{{$lead.PriorityScore}}</span>
+							<span class="ldf-icp-match">{{$lead.ICPMatch}}</span>
+							<span class="ldf-confidence">{{$lead.Confidence}}</span>
+							<span class="ldf-sales-status">{{$lead.SalesStatus}}</span>
+							<span class="ldf-action">{{$lead.Action}}</span>
+							<span class="ldf-sales-ready" data-yes="{{if $lead.SalesReady}}1{{else}}0{{end}}"></span>
+							<span class="ldf-duplicate-status">{{$lead.DuplicateStatus}}</span>
+							<span class="ldf-lead-status">{{$lead.LeadStatus}}</span>
+							<span class="ldf-summary">{{$lead.Summary}}</span>
+							<span class="ldf-summary-id">{{drawerTranslateNarrativeToID $lead.Summary}}</span>
+							<ul class="ldf-reasons">{{range $lead.Reasons}}<li>{{.}}</li>{{end}}</ul>
+							<ul class="ldf-reasons-id">{{range $lead.Reasons}}<li>{{drawerHumanizeIcpReasonID .}}</li>{{end}}</ul>
+							<span class="ldf-source">{{$lead.Source}}</span>
+							<span class="ldf-source-trace">{{range $i, $s := $lead.SourceTrace}}{{if $i}} | {{end}}{{$s}}{{end}}</span>
+							<span class="ldf-used-google" data-on="{{if $lead.UsedGoogle}}1{{else}}0{{end}}"></span>
+							<span class="ldf-used-apollo" data-on="{{if $lead.UsedApollo}}1{{else}}0{{end}}"></span>
+							<span class="ldf-used-linkedin" data-on="{{if $lead.UsedLinkedIn}}1{{else}}0{{end}}"></span>
+							<span class="ldf-source-ref">{{$lead.SourceRef}}</span>
+							<span class="ldf-created">{{$lead.CreatedAt.Format "2006-01-02 15:04:05 MST"}}</span>
+						</div>
+					</div>
+					{{else}}
+						{{if not .PipelineHasRun}}
+						<div class="lead-card-placeholder">No data yet. Click <strong>Generate Leads</strong> to start discovering companies.</div>
+						{{else if eq .TotalLeadsInDB 0}}
+						<div class="lead-card-placeholder">No leads found. Try enabling more sources or adjusting filters.</div>
+						{{else}}
+						<div class="lead-card-placeholder">No leads match your current filters. Try adjusting filters or clearing search.</div>
+						{{end}}
+					{{end}}
+				</div>
+				</section>
+				</form>
+			</main>
+		</div>
+
+	<div class="drawer-backdrop" id="drawer-backdrop" hidden></div>
+	<aside class="drawer" id="lead-drawer" aria-hidden="true" aria-labelledby="drawer-title">
+		<div class="drawer-header">
+			<div class="drawer-header-main">
+				<h2 id="drawer-title">Lead</h2>
+				<div class="sub" id="drawer-domain"></div>
+			</div>
+			<div class="drawer-header-actions">
+				<div class="drawer-lang-toggle" role="group" aria-label="Bahasa konten panel">
+					<button type="button" class="drawer-lang-btn" data-drawer-lang="id" id="drawer-lang-id" aria-pressed="false">ID</button>
+					<span class="drawer-lang-sep" aria-hidden="true">|</span>
+					<button type="button" class="drawer-lang-btn is-active" data-drawer-lang="en" id="drawer-lang-en" aria-pressed="true">EN</button>
+				</div>
+				<button type="button" class="drawer-close" id="drawer-close" aria-label="Close panel">&times;</button>
+			</div>
+		</div>
+		<div class="drawer-body">
+			<section class="drawer-insight-card drawer-insight-card--accent" aria-labelledby="drawer-icp-heading">
+				<div class="drawer-insight-card__header">
+					<h3 class="drawer-insight-card__title" id="drawer-icp-heading">ICP fit</h3>
+					<div class="suggested-action__help-wrap" data-icp-fit-help>
+						<button type="button" class="suggested-action__help-btn" id="drawer-icp-help-btn" aria-expanded="false" aria-controls="drawer-icp-help-popover" aria-label="Explain ICP fit levels and score">
+							<span class="suggested-action__help-ico" aria-hidden="true">i</span>
+						</button>
+						<div class="suggested-action__help-popover" id="drawer-icp-help-popover" role="region" aria-labelledby="drawer-icp-help-intro" aria-hidden="true">
+							<p class="suggested-action__help-intro" id="drawer-icp-help-intro">What ICP fit means</p>
+							<div id="drawer-icp-help-items" class="suggested-action__help-items"></div>
+						</div>
+					</div>
+				</div>
+				<div class="drawer-icp-row">
+					<span class="drawer-icp-level drawer-icp-level--medium" id="drawer-icp-level">Medium</span>
+					<span class="drawer-icp-score-line" id="drawer-icp-score-line"></span>
+				</div>
+				<p id="drawer-icp-reason-wrap" class="suggested-action__reason drawer-icp-reason">
+					<span class="suggested-action__reason-label" id="drawer-icp-reason-label">Reason</span>
+					<span id="drawer-icp-reason-text"></span>
+				</p>
+				<ul id="drawer-icp-reasons" class="drawer-signal-list"></ul>
+			</section>
+
+			<section class="drawer-insight-card drawer-insight-card--accent suggested-action" id="drawer-suggested-action" aria-label="Suggested action from the system; you can still choose what to do">
+				<div class="drawer-insight-card__header">
+					<h3 class="drawer-insight-card__title" id="drawer-suggested-title">Suggested action</h3>
+					<div class="suggested-action__help-wrap" data-suggested-action-help>
+						<button type="button" class="suggested-action__help-btn" id="drawer-sa-help-btn" aria-expanded="false" aria-controls="drawer-sa-help-popover" aria-label="Explain what Contact now, Research first, and Ignore mean">
+							<span class="suggested-action__help-ico" aria-hidden="true">i</span>
+						</button>
+						<div class="suggested-action__help-popover" id="drawer-sa-help-popover" role="region" aria-labelledby="drawer-sa-help-intro" aria-hidden="true">
+							<p class="suggested-action__help-intro" id="drawer-sa-help-intro">How to read these recommendations</p>
+							<div id="drawer-sa-help-items" class="suggested-action__help-items"></div>
+						</div>
+					</div>
+				</div>
+				<div class="suggested-action__body">
+					<span id="drawer-suggested-badge" class="suggested-action__badge suggested-action__badge--research">Research first</span>
+				</div>
+				<p id="drawer-suggested-reason-wrap" class="suggested-action__reason" hidden>
+					<span class="suggested-action__reason-label" id="drawer-suggested-reason-label">Reason</span> <span id="drawer-suggested-reason-text"></span>
+				</p>
+			</section>
+
+			<div id="drawer-gaps" class="drawer-gaps" hidden>
+				<strong id="drawer-gaps-heading">Before you reach out</strong>
+				<span id="drawer-gaps-lead"></span>
+				<ul id="drawer-gaps-list"></ul>
+			</div>
+
+			<section class="drawer-panel" aria-labelledby="drawer-worth-heading">
+				<h3 class="drawer-panel-title" id="drawer-worth-heading">Why this lead is worth your time</h3>
+				<p class="drawer-panel-text" id="drawer-worth">—</p>
+			</section>
+
+			<section class="drawer-panel" aria-labelledby="drawer-approach-heading">
+				<h3 class="drawer-panel-title" id="drawer-approach-heading">How to approach</h3>
+				<p class="drawer-panel-text" id="drawer-approach">—</p>
+			</section>
+
+			<section class="drawer-panel" aria-labelledby="drawer-signals-heading">
+				<h3 class="drawer-panel-title" id="drawer-signals-heading">Signal snapshot</h3>
+				<ul id="drawer-signals" class="drawer-signal-list"></ul>
+			</section>
+
+			<section class="drawer-panel" aria-labelledby="drawer-co-heading">
+				<h3 class="drawer-panel-title" id="drawer-co-heading">Company</h3>
+				<dl class="drawer-dl drawer-dl--compact">
+					<dt>Website</dt><dd id="drawer-dl-official" class="mono">—</dd>
+					<dt>LinkedIn</dt><dd id="drawer-dl-linkedin">—</dd>
+					<dt>Region</dt><dd id="drawer-dl-country">—</dd>
+					<dt>Industry</dt><dd id="drawer-dl-industry">—</dd>
+					<dt>Size</dt><dd id="drawer-dl-employee">—</dd>
+				</dl>
+			</section>
+
+			<details class="drawer-details" id="drawer-more-details">
+				<summary>More details</summary>
+				<p class="drawer-muted-note">Technical and pipeline metadata. Hidden by default so the main view stays focused on what to do next.</p>
+				<dl class="drawer-dl">
+					<dt>Source</dt><dd id="drawer-dl-source">—</dd>
+					<dt>Source path</dt><dd id="drawer-dl-trace" class="mono">—</dd>
+					<dt>Source reference</dt><dd id="drawer-dl-sref" class="mono">—</dd>
+					<dt>Integrations</dt><dd id="drawer-dl-used">—</dd>
+					<dt>Added</dt><dd id="drawer-dl-created">—</dd>
+					<dt>Data completeness</dt><dd id="drawer-dl-dc">—</dd>
+					<dt>Confidence</dt><dd id="drawer-dl-confidence">—</dd>
+					<dt>Internal note</dt><dd id="drawer-dl-internal-note">—</dd>
+					<dt>Record status</dt><dd id="drawer-dl-record-meta">—</dd>
+				</dl>
+			</details>
+
+			<a class="drawer-full-link" id="drawer-full-link" href="#"><span id="drawer-full-link-label">Open full page</span></a>
+		</div>
+	</aside>
+
+	<script>
+	(function () {
+		var backdrop = document.getElementById('drawer-backdrop');
+		var drawer = document.getElementById('lead-drawer');
+		var drawerClose = document.getElementById('drawer-close');
+		var drawerTitle = document.getElementById('drawer-title');
+		var drawerDomain = document.getElementById('drawer-domain');
+		var drawerBody = drawer.querySelector('.drawer-body');
+		var openMenus = [];
+		var drawerActiveCard = null;
+
+		var DRAWER_LANG_KEY = 'salesradar.drawerLang';
+		var DRAWER_UI = {
+			en: {
+				suggestedTitle: 'Suggested action',
+				reasonLabel: 'Reason',
+				worthTitle: 'Why this lead is worth your time',
+				approachTitle: 'How to approach',
+				signalTitle: 'Signal snapshot',
+				icpTitle: 'ICP fit',
+				companyTitle: 'Company',
+				helpIntro: 'How to read these recommendations',
+				helpAria: 'Explain what Contact now, Research first, and Ignore mean',
+				icpHelpIntro: 'What ICP fit means',
+				icpHelpAria: 'Explain High, Medium, and Low ICP fit and the priority score',
+				gapsHeading: 'Before you reach out',
+				gapsLead: 'A few fields are still thin — still fine to proceed, but you may want:',
+				openFull: 'Open full page',
+				worthFallback: 'We matched this company to your profile — share a quick note with the team on why it matters if you add context.',
+				approachDefault: 'Lead with the operational pain you see in their sector — training visibility, consistency across sites, and audit-friendly reporting.',
+				signalFallback: 'Snapshot will sharpen after enrichment and richer company text.',
+				icpFallbackIgnore: 'Low fit or duplicate risk — see More details if you need the technical trail.',
+				icpFallbackOther: 'Scoring reflects industry, size cues, and signals in the text we have so far.',
+				icpReasonSummaryHigh: 'This lead fits your target profile well and is worth prioritizing.',
+				icpReasonSummaryMedium: 'This lead is a fair match for your target, but a few things are still worth confirming.',
+				icpReasonSummaryLow: 'This lead is a weak match for your focus right now — no need to prioritize it.',
+				tierHigh: 'High',
+				tierMed: 'Medium',
+				tierLow: 'Low',
+				priorityScore: 'Priority score',
+				openProfile: 'Open profile',
+				closeAria: 'Close panel',
+				langGroupAria: 'Drawer content language',
+				dtWebsite: 'Website',
+				dtLinkedIn: 'LinkedIn',
+				dtRegion: 'Region',
+				dtIndustry: 'Industry',
+				dtSize: 'Size',
+				moreDetails: 'More details',
+				moreDetailsNote: 'Technical and pipeline metadata. Hidden by default so the main view stays focused on what to do next.',
+				dtRecord: 'Record status',
+				dtSource: 'Source',
+				dtTrace: 'Source path',
+				dtSref: 'Source reference',
+				dtIntegrations: 'Integrations',
+				dtAdded: 'Added',
+				dtCompleteness: 'Data completeness',
+				dtConfidence: 'Confidence',
+				dtInternal: 'Internal note'
+			},
+			id: {
+				suggestedTitle: 'Saran tindakan',
+				reasonLabel: 'Alasan',
+				worthTitle: 'Mengapa lead ini layak waktu Anda',
+				approachTitle: 'Cara pendekatan',
+				signalTitle: 'Ringkasan sinyal',
+				icpTitle: 'Kecocokan ICP',
+				companyTitle: 'Perusahaan',
+				helpIntro: 'Cara memahami rekomendasi ini',
+				helpAria: 'Penjelasan Saran tindakan: Siap dihubungi, Riset terlebih dahulu, dan Lewati',
+				icpHelpIntro: 'Arti kecocokan ICP',
+				icpHelpAria: 'Penjelasan tingkat Tinggi, Sedang, Rendah dan skor prioritas',
+				gapsHeading: 'Sebelum Anda menghubungi',
+				gapsLead: 'Beberapa field masih tipis — boleh lanjut, tetapi Anda bisa melengkapi:',
+				openFull: 'Buka halaman penuh',
+				worthFallback: 'Perusahaan ini cocok dengan profil Anda — bagikan catatan singkat ke tim mengapa ini penting bila Anda punya konteks tambahan.',
+				approachDefault: 'Tekankan nyeri operasional di sektornya: visibilitas pelatihan, konsistensi antar lokasi, dan pelaporan yang siap diaudit untuk tim tersebar.',
+				signalFallback: 'Ringkasan akan lebih tajam setelah data perusahaan diperkaya.',
+				icpFallbackIgnore: 'Kecocokan rendah atau risiko duplikat — lihat Selengkapnya jika perlu detail teknis.',
+				icpFallbackOther: 'Skor mempertimbangkan industri, ukuran, dan sinyal dalam teks yang ada.',
+				icpReasonSummaryHigh: 'Lead ini cocok dengan target BAWANA dan layak Anda utamakan untuk dihubungi.',
+				icpReasonSummaryMedium: 'Lead ini cukup sesuai target BAWANA, namun masih ada beberapa hal yang perlu Anda pastikan dulu.',
+				icpReasonSummaryLow: 'Lead ini kurang sesuai untuk fokus BAWANA saat ini — tidak perlu diprioritaskan.',
+				tierHigh: 'Tinggi',
+				tierMed: 'Sedang',
+				tierLow: 'Rendah',
+				priorityScore: 'Skor prioritas',
+				openProfile: 'Buka profil',
+				closeAria: 'Tutup panel',
+				langGroupAria: 'Bahasa konten panel',
+				dtWebsite: 'Situs web',
+				dtLinkedIn: 'LinkedIn',
+				dtRegion: 'Wilayah',
+				dtIndustry: 'Industri',
+				dtSize: 'Ukuran',
+				moreDetails: 'Selengkapnya',
+				moreDetailsNote: 'Metadata teknis dan pipeline. Disembunyikan secara default agar fokus pada langkah berikutnya.',
+				dtRecord: 'Status rekaman',
+				dtSource: 'Sumber',
+				dtTrace: 'Jalur sumber',
+				dtSref: 'Referensi sumber',
+				dtIntegrations: 'Integrasi',
+				dtAdded: 'Ditambahkan',
+				dtCompleteness: 'Kelengkapan data',
+				dtConfidence: 'Keyakinan',
+				dtInternal: 'Catatan internal'
+			}
+		};
+		var DRAWER_HELP = {
+			en: {
+				contact: { title: 'Contact now', lines: ['This lead shows strong fit and clear buying signals.', 'You can proceed with outreach without additional research.', 'Focus on reaching the right contact and starting the conversation.'] },
+				research: { title: 'Research first', lines: ['This lead has potential but lacks strong or complete signals.', 'You should validate the need, use case, or decision maker before outreach.', 'Quick research is recommended to avoid low-quality contact.'] },
+				ignore: { title: 'Ignore', lines: ['This lead has low relevance, weak signals, or is likely a duplicate.', 'No further action is needed at this time.', 'Focus your effort on higher priority leads.'] }
+			},
+			id: {
+				contact: { title: 'Siap dihubungi', lines: ['Lead ini menunjukkan kecocokan kuat dan sinyal pembelian yang jelas.', 'Anda dapat melanjutkan outreach tanpa riset tambahan.', 'Fokus mencari kontak yang tepat dan memulai percakapan.'] },
+				research: { title: 'Riset terlebih dahulu', lines: ['Lead ini berpotensi tetapi sinyalnya belum kuat atau belum lengkap.', 'Sebaiknya validasi kebutuhan, use case, atau pengambil keputusan sebelum outreach.', 'Riset singkat disarankan agar kontak tidak berkualitas rendah.'] },
+				ignore: { title: 'Lewati untuk saat ini', lines: ['Lead ini relevansinya rendah, sinyal lemah, atau kemungkinan duplikat.', 'Tidak perlu tindakan lanjut saat ini.', 'Arahkan usaha ke lead yang lebih prioritas.'] }
+			}
+		};
+		var DRAWER_ICP_HELP = {
+			en: {
+				high: { lines: ['This lead is a strong match for your ideal customer profile.', 'Industry and needs are clear enough to act on.', 'Good candidate to prioritize for outreach.'] },
+				medium: { lines: ['A reasonable fit, but a few things still need confirming.', 'Usually worth a quick check before full outreach.'] },
+				low: { lines: ['A weak match for your target profile.', 'Unlikely to become a strong opportunity.', 'Not worth prioritizing.'] },
+				score: { title: 'About the score', lines: ['The score reflects how strong the fit is (0–100).', 'Higher scores mean more potential worth reaching out.'] }
+			},
+			id: {
+				high: { lines: ['Lead ini sangat sesuai dengan target BAWANA.', 'Industri dan kebutuhan sudah cukup jelas.', 'Bisa langsung diprioritaskan untuk outreach.'] },
+				medium: { lines: ['Lead cukup sesuai, tapi masih ada yang perlu dipastikan.', 'Biasanya perlu sedikit riset sebelum outreach.'] },
+				low: { lines: ['Lead kurang sesuai dengan target BAWANA.', 'Kemungkinan kecil untuk jadi peluang yang baik.', 'Tidak perlu diprioritaskan.'] },
+				score: { title: 'Tentang skor', lines: ['Skor menunjukkan seberapa kuat kecocokan lead ini (0–100).', 'Semakin tinggi, semakin besar potensi untuk dihubungi.'] }
+			}
+		};
+
+		function getDrawerLang() {
+			try {
+				var v = localStorage.getItem(DRAWER_LANG_KEY);
+				if (v === 'id' || v === 'en') return v;
+			} catch (e) {}
+			return 'en';
+		}
+		function setDrawerLang(lang) {
+			try {
+				localStorage.setItem(DRAWER_LANG_KEY, lang);
+			} catch (e) {}
+		}
+		function syncDrawerLangToggleUI() {
+			var lang = getDrawerLang();
+			var bId = document.getElementById('drawer-lang-id');
+			var bEn = document.getElementById('drawer-lang-en');
+			if (bId) {
+				bId.classList.toggle('is-active', lang === 'id');
+				bId.setAttribute('aria-pressed', lang === 'id' ? 'true' : 'false');
+			}
+			if (bEn) {
+				bEn.classList.toggle('is-active', lang === 'en');
+				bEn.setAttribute('aria-pressed', lang === 'en' ? 'true' : 'false');
+			}
+			var g = document.querySelector('.drawer-lang-toggle');
+			if (g) g.setAttribute('aria-label', (DRAWER_UI[lang] || DRAWER_UI.en).langGroupAria);
+		}
+		function pickLangField(q, baseCls, lang) {
+			if (lang === 'id') {
+				var idEl = q('.' + baseCls + '-id');
+				if (idEl && idEl.textContent.trim()) return idEl.textContent.trim();
+			}
+			var el = q('.' + baseCls);
+			return el ? el.textContent.trim() : '';
+		}
+		function icpReasonSummaryForTier(lang, tierKey) {
+			var ui = DRAWER_UI[lang] || DRAWER_UI.en;
+			var k = tierKey || 'medium';
+			if (k === 'high') return ui.icpReasonSummaryHigh;
+			if (k === 'low') return ui.icpReasonSummaryLow;
+			return ui.icpReasonSummaryMedium;
+		}
+		function icpTierFromLeadLang(matchRaw, scoreRaw, lang) {
+			var m = String(matchRaw || '').trim().toLowerCase();
+			var score = parseInt(String(scoreRaw || '0'), 10);
+			if (isNaN(score)) score = 0;
+			var ui = DRAWER_UI[lang] || DRAWER_UI.en;
+			if (m === 'high' || m === 'yes' || score >= 70) return { label: ui.tierHigh, cls: 'drawer-icp-level--high', key: 'high' };
+			if (m === 'low' || m === 'no' || score < 40) return { label: ui.tierLow, cls: 'drawer-icp-level--low', key: 'low' };
+			return { label: ui.tierMed, cls: 'drawer-icp-level--medium', key: 'medium' };
+		}
+		var SIGNAL_INDUSTRY_ID = { banking: 'perbankan', retail: 'ritel', hospitality: 'perhotelan', grocery: 'grocery', fmcg: 'FMCG' };
+		function translateSignalLine(s, lang) {
+			if (lang !== 'id') return s;
+			return String(s)
+				.replace(/^Industry context: *(.*)$/, function (_m, ind) {
+					var raw = String(ind || '').trim();
+					var k = raw.toLowerCase();
+					var idWord = SIGNAL_INDUSTRY_ID[k] || raw;
+					return 'Konteks industri: ' + idWord;
+				})
+				.replace(/^Headcount cue: /, 'Indikasi jumlah karyawan: ')
+				.replace(/^Timing looks strong \(why now\)$/, 'Waktu tepat (why now)')
+				.replace(/^Moderate timing signal$/, 'Sinyal waktu sedang')
+				.replace(/^Timing signal: needs validation$/, 'Sinyal waktu: perlu validasi')
+				.replace(/^Compliance-heavy environment$/, 'Lingkungan banyak compliance')
+				.replace(/^Training and workforce scale$/, 'Pelatihan dan skala tenaga kerja')
+				.replace(/^Distributed or multi-site operations$/, 'Operasi multi-lokasi atau tersebar')
+				.replace(/^Hiring or staffing pressure$/, 'Tekanan rekrutmen atau staffing')
+				.replace(/^Weaker hiring signal in text$/, 'Sinyal rekrutmen lemah dalam teks')
+				.replace(/^Operational or digital change$/, 'Perubahan operasional atau digital');
+		}
+		function buildSignalListLang(lang, t, q, reasonLis) {
+			var merged = '';
+			for (var i = 0; i < reasonLis.length; i++) merged += ' ' + reasonLis[i].textContent;
+			var industry = t('.ldf-industry');
+			var emp = t('.ldf-employee');
+			var why = pickLangField(q, 'ldf-why-now', lang);
+			var strengthEl = q('.ldf-why-strength');
+			var wv = strengthEl ? (strengthEl.getAttribute('data-val') || '').trim().toLowerCase() : '';
+			var parts = [];
+			if (industry && industry !== '—') parts.push('Industry context: ' + industry);
+			if (emp && emp !== '—') parts.push('Headcount cue: ' + emp);
+			if (wv === 'high') parts.push('Timing looks strong (why now)');
+			else if (wv === 'medium') parts.push('Moderate timing signal');
+			else if (why && why !== '—') parts.push('Timing signal: needs validation');
+			parts = parts.concat(keywordSignals(why + ' ' + pickLangField(q, 'ldf-reason-for-fit', lang) + ' ' + pickLangField(q, 'ldf-summary', lang) + merged));
+			parts = uniqStrings(parts);
+			parts = parts.slice(0, 6);
+			for (var j = 0; j < parts.length; j++) parts[j] = translateSignalLine(parts[j], lang);
+			return parts;
+		}
+		function humanizeIcpReasonLang(lang, raw, idx, q) {
+			if (lang === 'id') {
+				var ulId = q('.ldf-reasons-id');
+				if (ulId) {
+					var lis = ulId.querySelectorAll('li');
+					if (lis[idx]) return lis[idx].textContent.trim();
+				}
+			}
+			return humanizeIcpReason(raw);
+		}
+		function buildWorthParagraphLang(lang, rf, sum, why) {
+			var ui = DRAWER_UI[lang] || DRAWER_UI.en;
+			var a = takeSentences(rf, 2, 420);
+			if (a) return a;
+			var b = takeSentences(sum, 2, 420);
+			if (b) return b;
+			var c = takeSentences(why, 2, 320);
+			if (c) return c;
+			return ui.worthFallback;
+		}
+		function renderDrawerHelpItems(lang, variant) {
+			var host = document.getElementById('drawer-sa-help-items');
+			if (!host) return;
+			var pack = DRAWER_HELP[lang] || DRAWER_HELP.en;
+			var order = ['contact', 'research', 'ignore'];
+			host.innerHTML = '';
+			for (var i = 0; i < order.length; i++) {
+				var k = order[i];
+				var block = pack[k];
+				if (!block) continue;
+				var div = document.createElement('div');
+				div.className = 'suggested-action__help-item' + (k === variant ? ' is-current' : '');
+				div.setAttribute('data-sa-variant', k);
+				var strong = document.createElement('strong');
+				strong.className = 'suggested-action__help-item-title';
+				strong.textContent = block.title;
+				div.appendChild(strong);
+				for (var j = 0; j < block.lines.length; j++) {
+					var p = document.createElement('p');
+					p.textContent = block.lines[j];
+					div.appendChild(p);
+				}
+				host.appendChild(div);
+			}
+		}
+		function renderDrawerIcpHelpItems(lang, tierKey) {
+			var host = document.getElementById('drawer-icp-help-items');
+			if (!host) return;
+			var pack = DRAWER_ICP_HELP[lang] || DRAWER_ICP_HELP.en;
+			var ui = DRAWER_UI[lang] || DRAWER_UI.en;
+			var order = ['high', 'medium', 'low'];
+			host.innerHTML = '';
+			for (var i = 0; i < order.length; i++) {
+				var k = order[i];
+				var block = pack[k];
+				if (!block) continue;
+				var div = document.createElement('div');
+				var tierTitle = k === 'high' ? ui.tierHigh : (k === 'low' ? ui.tierLow : ui.tierMed);
+				div.className = 'suggested-action__help-item' + (k === tierKey ? ' is-current-icp is-tier-' + k : '');
+				div.setAttribute('data-icp-tier', k);
+				var strong = document.createElement('strong');
+				strong.className = 'suggested-action__help-item-title';
+				strong.textContent = tierTitle;
+				div.appendChild(strong);
+				for (var j = 0; j < block.lines.length; j++) {
+					var p = document.createElement('p');
+					p.textContent = block.lines[j];
+					div.appendChild(p);
+				}
+				host.appendChild(div);
+			}
+			var scorePack = pack.score;
+			if (scorePack) {
+				var scoreDiv = document.createElement('div');
+				scoreDiv.className = 'suggested-action__help-item drawer-icp-help-item--score';
+				var sStrong = document.createElement('strong');
+				sStrong.className = 'suggested-action__help-item-title';
+				sStrong.textContent = scorePack.title;
+				scoreDiv.appendChild(sStrong);
+				for (var si = 0; si < scorePack.lines.length; si++) {
+					var sp = document.createElement('p');
+					sp.textContent = scorePack.lines[si];
+					scoreDiv.appendChild(sp);
+				}
+				host.appendChild(scoreDiv);
+			}
+		}
+		function applyDrawerDlLabels(lang) {
+			var ui = DRAWER_UI[lang] || DRAWER_UI.en;
+			var map = [
+				['drawer-dl-official', 'dtWebsite'],
+				['drawer-dl-linkedin', 'dtLinkedIn'],
+				['drawer-dl-country', 'dtRegion'],
+				['drawer-dl-industry', 'dtIndustry'],
+				['drawer-dl-employee', 'dtSize'],
+				['drawer-dl-source', 'dtSource'],
+				['drawer-dl-trace', 'dtTrace'],
+				['drawer-dl-sref', 'dtSref'],
+				['drawer-dl-used', 'dtIntegrations'],
+				['drawer-dl-created', 'dtAdded'],
+				['drawer-dl-dc', 'dtCompleteness'],
+				['drawer-dl-confidence', 'dtConfidence'],
+				['drawer-dl-internal-note', 'dtInternal'],
+				['drawer-dl-record-meta', 'dtRecord']
+			];
+			for (var i = 0; i < map.length; i++) {
+				var dd = document.getElementById(map[i][0]);
+				if (!dd) continue;
+				var dt = dd.previousElementSibling;
+				if (dt && dt.tagName === 'DT') dt.textContent = ui[map[i][1]];
+			}
+			var md = document.getElementById('drawer-more-details');
+			if (md) {
+				var sum = md.querySelector('summary');
+				if (sum) sum.textContent = ui.moreDetails;
+				var note = md.querySelector('.drawer-muted-note');
+				if (note) note.textContent = ui.moreDetailsNote;
+			}
+		}
+		function applyDrawerChromeLang(lang) {
+			var ui = DRAWER_UI[lang] || DRAWER_UI.en;
+			var st = document.getElementById('drawer-suggested-title');
+			if (st) st.textContent = ui.suggestedTitle;
+			document.getElementById('drawer-worth-heading').textContent = ui.worthTitle;
+			document.getElementById('drawer-approach-heading').textContent = ui.approachTitle;
+			document.getElementById('drawer-signals-heading').textContent = ui.signalTitle;
+			document.getElementById('drawer-icp-heading').textContent = ui.icpTitle;
+			document.getElementById('drawer-co-heading').textContent = ui.companyTitle;
+			var rl = document.getElementById('drawer-suggested-reason-label');
+			if (rl) rl.textContent = ui.reasonLabel;
+			var icpRl = document.getElementById('drawer-icp-reason-label');
+			if (icpRl) icpRl.textContent = ui.reasonLabel;
+			var intro = document.getElementById('drawer-sa-help-intro');
+			if (intro) intro.textContent = ui.helpIntro;
+			var hBtn = document.getElementById('drawer-sa-help-btn');
+			if (hBtn) hBtn.setAttribute('aria-label', ui.helpAria);
+			var icpIntro = document.getElementById('drawer-icp-help-intro');
+			if (icpIntro) icpIntro.textContent = ui.icpHelpIntro;
+			var icpHBtn = document.getElementById('drawer-icp-help-btn');
+			if (icpHBtn) icpHBtn.setAttribute('aria-label', ui.icpHelpAria);
+			var gh = document.getElementById('drawer-gaps-heading');
+			if (gh) gh.textContent = ui.gapsHeading;
+			var fl = document.getElementById('drawer-full-link-label');
+			if (fl) fl.textContent = ui.openFull;
+			var dc = document.getElementById('drawer-close');
+			if (dc) dc.setAttribute('aria-label', ui.closeAria);
+			applyDrawerDlLabels(lang);
+		}
+
+		function closeAllDrawerHelpPopovers() {
+			document.querySelectorAll('[data-suggested-action-help].is-open, [data-icp-fit-help].is-open').forEach(function (wrap) {
+				wrap.classList.remove('is-open');
+				var b = wrap.querySelector('.suggested-action__help-btn');
+				var p = wrap.querySelector('.suggested-action__help-popover');
+				if (b) b.setAttribute('aria-expanded', 'false');
+				if (p) p.setAttribute('aria-hidden', 'true');
+			});
+		}
+		function bindDrawerHelpPopovers(root) {
+			root = root || document;
+			root.querySelectorAll('[data-suggested-action-help], [data-icp-fit-help]').forEach(function (wrap) {
+				if (wrap.dataset.drawerHelpBound === '1') return;
+				wrap.dataset.drawerHelpBound = '1';
+				var btn = wrap.querySelector('.suggested-action__help-btn');
+				var pop = wrap.querySelector('.suggested-action__help-popover');
+				if (!btn || !pop) return;
+				wrap.addEventListener('click', function (e) { e.stopPropagation(); });
+				btn.addEventListener('click', function (e) {
+					e.stopPropagation();
+					var open = !wrap.classList.contains('is-open');
+					closeAllDrawerHelpPopovers();
+					if (open) {
+						wrap.classList.add('is-open');
+						btn.setAttribute('aria-expanded', 'true');
+						pop.setAttribute('aria-hidden', 'false');
+					}
+				});
+			});
+		}
+		document.addEventListener('keydown', function (e) {
+			if (e.key === 'Escape') closeAllDrawerHelpPopovers();
+		});
+		document.addEventListener('click', closeAllDrawerHelpPopovers);
+		bindDrawerHelpPopovers(document);
+
+		function takeSentences(text, maxSentences, maxChars) {
+			var s = (text == null ? '' : String(text)).replace(/\s+/g, ' ').trim();
+			if (!s) return '';
+			var parts = s.split(/(?<=[.!?])\s+/);
+			var out = [];
+			var n = 0;
+			for (var i = 0; i < parts.length && n < maxSentences; i++) {
+				var p = parts[i].trim();
+				if (!p) continue;
+				out.push(p);
+				n++;
+				if (out.join(' ').length >= maxChars) break;
+			}
+			var joined = out.join(' ');
+			if (joined.length > maxChars) joined = joined.slice(0, maxChars).trim() + '…';
+			return joined;
+		}
+		function uniqStrings(arr) {
+			var seen = {};
+			var out = [];
+			for (var i = 0; i < arr.length; i++) {
+				var k = arr[i];
+				if (!k || seen[k]) continue;
+				seen[k] = true;
+				out.push(k);
+			}
+			return out;
+		}
+		function humanizeIcpReason(line) {
+			var r = String(line || '').toLowerCase();
+			if (r.indexOf('non-target industry') !== -1) return 'Outside your target industries';
+			if (r.indexOf('below typical company size') !== -1 || r.indexOf('below minimum company size') !== -1) return 'Company size looks below your target';
+			if (r.indexOf('above maximum company size') !== -1) return 'Company size looks above your ceiling';
+			if (r.indexOf('below 50 employees') !== -1) return 'Very small team based on available data';
+			if (r.indexOf('weak') !== -1 && r.indexOf('signal') !== -1) return 'Training or ops signals are light in the text';
+			if (r.indexOf('training') !== -1 && r.indexOf('signal') !== -1) return 'Training or operational angle in the data';
+			if (r.indexOf('meets size') !== -1) return 'Size looks aligned';
+			if (r.indexOf('sector plausible') !== -1) return 'Sector is plausible for outreach';
+			if (r.indexOf('ambiguous') !== -1) return 'Industry picture still fuzzy — worth a quick check';
+			if (r.indexOf('insufficient data') !== -1) return 'Need more context to be confident';
+			var plain = String(line || '').trim();
+			if (plain.length > 72) return plain.slice(0, 70) + '…';
+			return plain || 'Signal from scoring model';
+		}
+		function keywordSignals(blob) {
+			var lower = String(blob || '').toLowerCase();
+			var hits = [];
+			if (/compliance|regulat|audit|certification/.test(lower)) hits.push('Compliance-heavy environment');
+			if (/train|onboard|l&d|learning|workforce|frontline/.test(lower)) hits.push('Training and workforce scale');
+			if (/branch|outlet|multi[\-\s]?site|distributed|national\s+footprint/.test(lower)) hits.push('Distributed or multi-site operations');
+			if (/hiring|turnover|staffing|recruit/.test(lower)) hits.push('Hiring or staffing pressure');
+			else if (/signal/.test(lower) && /weak/.test(lower)) hits.push('Weaker hiring signal in text');
+			if (/digital|transformation|standardization/.test(lower)) hits.push('Operational or digital change');
+			return hits;
+		}
+		var SIDEBAR_KEY = 'salesradar.sidebarCollapsed';
+		var sidebarToggle = document.getElementById('sidebar-toggle');
+		function syncSidebarToggleUI() {
+			if (!sidebarToggle) return;
+			var collapsed = document.documentElement.classList.contains('sidebar-collapsed');
+			sidebarToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+			sidebarToggle.setAttribute('aria-label', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+		}
+		syncSidebarToggleUI();
+		if (sidebarToggle) {
+			sidebarToggle.addEventListener('click', function () {
+				var nowCollapsed = document.documentElement.classList.toggle('sidebar-collapsed');
+				try {
+					localStorage.setItem(SIDEBAR_KEY, nowCollapsed ? 'true' : 'false');
+				} catch (e) {}
+				syncSidebarToggleUI();
+			});
+		}
+
+		function closeDrawer() {
+			closeAllDrawerHelpPopovers();
+			if (drawerActiveCard) {
+				drawerActiveCard.classList.remove('lead-card--active');
+				drawerActiveCard = null;
+			}
+			drawer.classList.remove('open');
+			backdrop.classList.remove('visible');
+			backdrop.setAttribute('hidden', '');
+			drawer.setAttribute('aria-hidden', 'true');
+		}
+		function dash(s) {
+			var t = (s == null ? '' : String(s)).trim();
+			return t ? t : '—';
+		}
+		function actionCodeToLabel(act) {
+			if (act === 'Contact') return 'Contact now';
+			if (act === 'Ignore') return 'Ignore';
+			return 'Research first';
+		}
+		function actionCodeToLabelID(act) {
+			if (act === 'Contact') return 'Siap dihubungi';
+			if (act === 'Ignore') return 'Lewati untuk saat ini';
+			return 'Riset terlebih dahulu';
+		}
+		function applyDrawerBody(card, lang) {
+			if (!lang) lang = getDrawerLang();
+			var ui = DRAWER_UI[lang] || DRAWER_UI.en;
+			applyDrawerChromeLang(lang);
+			var src = card ? card.querySelector('.lead-detail-source') : null;
+			function q(sel) { return src ? src.querySelector(sel) : null; }
+			function t(sel) { var el = q(sel); return el ? el.textContent.trim() : ''; }
+
+			function fillEmptyState() {
+				var db = document.getElementById('drawer-suggested-badge');
+				if (db) {
+					db.textContent = lang === 'id' ? 'Riset terlebih dahulu' : 'Research first';
+					db.className = 'suggested-action__badge suggested-action__badge--research';
+				}
+				var dr = document.getElementById('drawer-suggested-reason-wrap');
+				var drt = document.getElementById('drawer-suggested-reason-text');
+				if (dr) dr.hidden = true;
+				if (drt) drt.textContent = '';
+				renderDrawerHelpItems(lang, 'research');
+				renderDrawerIcpHelpItems(lang, 'medium');
+				document.getElementById('drawer-worth').textContent = '—';
+				document.getElementById('drawer-approach').textContent = '—';
+				document.getElementById('drawer-signals').innerHTML = '';
+				var tierEl = document.getElementById('drawer-icp-level');
+				tierEl.textContent = ui.tierMed;
+				tierEl.className = 'drawer-icp-level drawer-icp-level--medium';
+				document.getElementById('drawer-icp-score-line').textContent = '';
+				var icpRW = document.getElementById('drawer-icp-reason-wrap');
+				var icpRT = document.getElementById('drawer-icp-reason-text');
+				if (icpRT) icpRT.textContent = icpReasonSummaryForTier(lang, 'medium');
+				document.getElementById('drawer-icp-reasons').innerHTML = '';
+				var g = document.getElementById('drawer-gaps');
+				if (g) g.hidden = true;
+			}
+
+			if (!src) {
+				fillEmptyState();
+				return;
+			}
+
+			var sugLabelEn = t('.ldf-suggested-label');
+			var sugVariant = t('.ldf-suggested-variant');
+			var actCode = t('.ldf-action');
+			var displayLabelEn = sugLabelEn || actionCodeToLabel(actCode);
+			var displayLabel = lang === 'id'
+				? (pickLangField(q, 'ldf-suggested-label', lang) || actionCodeToLabelID(actCode))
+				: displayLabelEn;
+			if (!sugVariant || !/^(contact|research|ignore)$/.test(sugVariant)) {
+				sugVariant = displayLabelEn === 'Contact now' ? 'contact' : (displayLabelEn === 'Ignore' ? 'ignore' : 'research');
+			}
+			var badgeEl = document.getElementById('drawer-suggested-badge');
+			if (badgeEl) {
+				badgeEl.textContent = displayLabel;
+				badgeEl.className = 'suggested-action__badge suggested-action__badge--' + sugVariant;
+			}
+			var sugReason = pickLangField(q, 'ldf-suggested-reason', lang);
+			var reasonWrap = document.getElementById('drawer-suggested-reason-wrap');
+			var reasonTextEl = document.getElementById('drawer-suggested-reason-text');
+			if (reasonWrap && reasonTextEl) {
+				if (sugReason) {
+					reasonTextEl.textContent = sugReason;
+					reasonWrap.hidden = false;
+				} else {
+					reasonTextEl.textContent = '';
+					reasonWrap.hidden = true;
+				}
+			}
+			renderDrawerHelpItems(lang, sugVariant);
+
+			var miss = q('.ldf-missing-opt');
+			var missLis = miss ? miss.querySelectorAll('li') : [];
+			var gapsBox = document.getElementById('drawer-gaps');
+			var gapsLead = document.getElementById('drawer-gaps-lead');
+			var gapsUl = document.getElementById('drawer-gaps-list');
+			if (gapsBox && gapsUl && gapsLead) {
+				if (missLis.length) {
+					gapsBox.hidden = false;
+					gapsLead.textContent = ui.gapsLead;
+					gapsUl.innerHTML = '';
+					for (var mi = 0; mi < missLis.length; mi++) {
+						var gLi = document.createElement('li');
+						gLi.textContent = missLis[mi].textContent.trim();
+						gapsUl.appendChild(gLi);
+					}
+				} else {
+					gapsBox.hidden = true;
+					gapsLead.textContent = '';
+					gapsUl.innerHTML = '';
+				}
+			}
+
+			document.getElementById('drawer-worth').textContent = buildWorthParagraphLang(lang,
+				pickLangField(q, 'ldf-reason-for-fit', lang),
+				pickLangField(q, 'ldf-summary', lang),
+				pickLangField(q, 'ldf-why-now', lang)
+			);
+
+			var angleText = pickLangField(q, 'ldf-sales-angle', lang);
+			document.getElementById('drawer-approach').textContent = angleText && angleText !== '—'
+				? takeSentences(angleText, 2, 360)
+				: ui.approachDefault;
+
+			var reasonsSrc = q('.ldf-reasons');
+			var reasonLis = reasonsSrc ? reasonsSrc.querySelectorAll('li') : [];
+			var snapUl = document.getElementById('drawer-signals');
+			snapUl.innerHTML = '';
+			var snaps = buildSignalListLang(lang, t, q, reasonLis);
+			if (!snaps.length) snaps.push(ui.signalFallback);
+			for (var si = 0; si < snaps.length; si++) {
+				var sLi = document.createElement('li');
+				sLi.textContent = snaps[si];
+				if (/weaker|needs validation|fuzzy|lemah|validasi|kabur/i.test(snaps[si])) sLi.classList.add('is-weak');
+				snapUl.appendChild(sLi);
+			}
+
+			var icpMatchRaw = t('.ldf-icp-match');
+			var icpScoreRaw = t('.ldf-icp-score');
+			var tier = icpTierFromLeadLang(icpMatchRaw, icpScoreRaw, lang);
+			var tierEl = document.getElementById('drawer-icp-level');
+			tierEl.textContent = tier.label;
+			tierEl.className = 'drawer-icp-level ' + tier.cls;
+			renderDrawerIcpHelpItems(lang, tier.key || 'medium');
+			var scoreNum = parseInt(icpScoreRaw || '0', 10);
+			document.getElementById('drawer-icp-score-line').textContent =
+				(isNaN(scoreNum) ? '' : ui.priorityScore + ' ' + scoreNum + '/100');
+
+			var icpReasonTextEl = document.getElementById('drawer-icp-reason-text');
+			if (icpReasonTextEl) {
+				icpReasonTextEl.textContent = icpReasonSummaryForTier(lang, tier.key);
+			}
+
+			var icpUl = document.getElementById('drawer-icp-reasons');
+			icpUl.innerHTML = '';
+			var icpCount = 0;
+			for (var ri = 0; ri < reasonLis.length && icpCount < 3; ri++) {
+				var rawR = reasonLis[ri].textContent.trim();
+				if (!rawR) continue;
+				var iLi = document.createElement('li');
+				iLi.textContent = humanizeIcpReasonLang(lang, rawR, ri, q);
+				icpUl.appendChild(iLi);
+				icpCount++;
+			}
+			if (!icpCount) {
+				var fallbackLi = document.createElement('li');
+				fallbackLi.textContent = displayLabelEn === 'Ignore' ? ui.icpFallbackIgnore : ui.icpFallbackOther;
+				icpUl.appendChild(fallbackLi);
+			}
+
+			document.getElementById('drawer-dl-official').textContent = dash(t('.ldf-official-domain'));
+			var liUrlEl = q('.ldf-linkedin-url');
+			var lurl = liUrlEl ? (liUrlEl.getAttribute('data-url') || '').trim() : '';
+			var dlLinkedIn = document.getElementById('drawer-dl-linkedin');
+			dlLinkedIn.textContent = '';
+			if (lurl) {
+				var la = document.createElement('a');
+				la.href = lurl;
+				la.target = '_blank';
+				la.rel = 'noopener noreferrer';
+				la.textContent = ui.openProfile;
+				dlLinkedIn.appendChild(la);
+			} else {
+				dlLinkedIn.textContent = '—';
+			}
+			document.getElementById('drawer-dl-country').textContent = dash(t('.ldf-country'));
+			document.getElementById('drawer-dl-industry').textContent = dash(t('.ldf-industry'));
+			document.getElementById('drawer-dl-employee').textContent = dash(t('.ldf-employee'));
+
+			var dcRaw = t('.ldf-data-completeness');
+			document.getElementById('drawer-dl-dc').textContent = (dcRaw !== '' ? dcRaw : '0') + ' / 100';
+			document.getElementById('drawer-dl-confidence').textContent = dash(t('.ldf-confidence'));
+			document.getElementById('drawer-dl-source').textContent = dash(t('.ldf-source'));
+			document.getElementById('drawer-dl-trace').textContent = dash(t('.ldf-source-trace'));
+			document.getElementById('drawer-dl-sref').textContent = dash(t('.ldf-source-ref'));
+			var ug = q('.ldf-used-google');
+			var uap = q('.ldf-used-apollo');
+			var uli = q('.ldf-used-linkedin');
+			var gOn = ug && ug.getAttribute('data-on') === '1';
+			var apOn = uap && uap.getAttribute('data-on') === '1';
+			var liOn = uli && uli.getAttribute('data-on') === '1';
+			var usedParts = [];
+			if (gOn) usedParts.push('Google');
+			if (apOn) usedParts.push('Apollo');
+			if (liOn) usedParts.push('LinkedIn');
+			document.getElementById('drawer-dl-used').textContent = usedParts.length ? usedParts.join(', ') : '—';
+			document.getElementById('drawer-dl-created').textContent = dash(t('.ldf-created'));
+
+			var salesStat = dash(t('.ldf-sales-status'));
+			var leadStat = dash(t('.ldf-lead-status'));
+			var dupStat = dash(t('.ldf-duplicate-status'));
+			var metaLine = [];
+			if (salesStat !== '—') metaLine.push('Pipeline: ' + salesStat.replace(/_/g, ' '));
+			if (leadStat !== '—') metaLine.push('Record: ' + leadStat.replace(/_/g, ' '));
+			if (dupStat !== '—') metaLine.push('Dedup: ' + dupStat);
+			document.getElementById('drawer-dl-record-meta').textContent = metaLine.length ? metaLine.join(' · ') : '—';
+
+			document.getElementById('drawer-dl-internal-note').textContent = dash(t('.ldf-accept-explanation'));
+		}
+
+		function openDrawerFromCard(card) {
+			if (drawerActiveCard && drawerActiveCard !== card) {
+				drawerActiveCard.classList.remove('lead-card--active');
+			}
+			drawerActiveCard = card;
+			card.classList.add('lead-card--active');
+			var nameEl = card.querySelector('.name');
+			var domEl = card.querySelector('.domain');
+			drawerTitle.textContent = nameEl ? nameEl.textContent.trim() : 'Lead';
+			drawerDomain.textContent = domEl ? domEl.textContent.trim() : '';
+			if (drawerBody) drawerBody.scrollTop = 0;
+
+			var fullHref = card.getAttribute('data-href') || '#';
+			var fullLink = document.getElementById('drawer-full-link');
+			if (fullLink) { fullLink.setAttribute('href', fullHref); }
+
+			var moreDetails = document.getElementById('drawer-more-details');
+			if (moreDetails) moreDetails.open = false;
+
+			syncDrawerLangToggleUI();
+			applyDrawerBody(card, getDrawerLang());
+
+			drawer.classList.add('open');
+			backdrop.removeAttribute('hidden');
+			requestAnimationFrame(function () { backdrop.classList.add('visible'); });
+			drawer.setAttribute('aria-hidden', 'false');
+		}
+
+		function onDrawerLangSelect(lang) {
+			closeAllDrawerHelpPopovers();
+			setDrawerLang(lang);
+			syncDrawerLangToggleUI();
+			if (drawerActiveCard) applyDrawerBody(drawerActiveCard, lang);
+		}
+		var drawerLangIdBtn = document.getElementById('drawer-lang-id');
+		var drawerLangEnBtn = document.getElementById('drawer-lang-en');
+		if (drawerLangIdBtn) {
+			drawerLangIdBtn.addEventListener('click', function (e) {
+				e.stopPropagation();
+				onDrawerLangSelect('id');
+			});
+		}
+		if (drawerLangEnBtn) {
+			drawerLangEnBtn.addEventListener('click', function (e) {
+				e.stopPropagation();
+				onDrawerLangSelect('en');
+			});
+		}
+		syncDrawerLangToggleUI();
+
+		document.querySelectorAll('.lead-card[data-href]').forEach(function (card) {
+			function activate() {
+				openDrawerFromCard(card);
+			}
+			card.addEventListener('click', function (e) {
+				if (e.target.closest('.lc-menu')) return;
+				activate();
+			});
+			card.addEventListener('keydown', function (e) {
+				if (e.key === 'Enter' || e.key === ' ') {
+					if (e.target.closest('.lc-menu')) return;
+					e.preventDefault();
+					activate();
+				}
+			});
+		});
+
+		drawerClose.addEventListener('click', closeDrawer);
+		backdrop.addEventListener('click', closeDrawer);
+
+		document.querySelectorAll('.menu-trigger').forEach(function (btn) {
+			btn.addEventListener('click', function (e) {
+				e.stopPropagation();
+				var wrap = btn.closest('.menu-wrap');
+				var dd = wrap.querySelector('.menu-dropdown');
+				var isOpen = dd.classList.contains('open');
+				openMenus.forEach(function (x) {
+					if (x.dd !== dd) { x.dd.classList.remove('open'); x.btn.setAttribute('aria-expanded', 'false'); }
+				});
+				openMenus = [];
+				if (!isOpen) { dd.classList.add('open'); btn.setAttribute('aria-expanded', 'true'); openMenus.push({ dd: dd, btn: btn }); }
+				else { dd.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); }
+			});
+		});
+		document.addEventListener('click', function () {
+			openMenus.forEach(function (x) { x.dd.classList.remove('open'); x.btn.setAttribute('aria-expanded', 'false'); });
+			openMenus = [];
+		});
+
+		document.addEventListener('keydown', function (e) {
+			if (e.key === 'Escape' && drawer.classList.contains('open')) closeDrawer();
+		});
+
+		var pipelineKeys = ['candidates', 'enriched', 'contact_ready', 'research_first', 'rejected', 'dupes', 'merged', 'stored', 'int_g', 'int_a', 'int_l', 'providers', 'breakdown', 'bd_total', 'bd_ok', 'mode', 'src'];
+		function mergeLeadsURLAfterRun(data) {
+			var form = document.getElementById('form-leads');
+			var params = new URLSearchParams(new FormData(form));
+			pipelineKeys.forEach(function (k) { params.delete(k); });
+			params.set('candidates', String(data.candidates_found));
+			params.set('enriched', String(data.enriched));
+			params.set('contact_ready', String(data.contact_ready));
+			params.set('research_first', String(data.research_first));
+			params.set('rejected', String(data.rejected));
+			params.set('dupes', String(data.duplicates_removed));
+			params.set('merged', String(data.semantic_merged));
+			params.set('stored', String(data.rows_stored));
+			params.set('int_g', data.integration_google_used ? '1' : '0');
+			params.set('int_a', data.integration_apollo_used ? '1' : '0');
+			params.set('int_l', data.integration_linkedin_used ? '1' : '0');
+			params.set('providers', JSON.stringify(data.provider_statuses || []));
+			params.set('breakdown', JSON.stringify(data.discovery_breakdown || []));
+			params.set('bd_total', String(data.breakdown_generated_total));
+			params.set('bd_ok', String(data.breakdown_matches_total));
+			params.set('mode', String(data.discovery_mode || ''));
+			params.set('src', String(data.discovery_source || ''));
+			return '/leads?' + params.toString();
+		}
+
+		var genBtn = document.getElementById('btn-generate-header');
+		var genText = genBtn ? genBtn.querySelector('.btn-gen-text') : null;
+		if (genBtn && genText) {
+			genBtn.addEventListener('click', function () {
+				if (genBtn.disabled || genBtn.classList.contains('is-loading')) return;
+				genBtn.disabled = true;
+				genBtn.classList.add('is-loading');
+				genBtn.setAttribute('aria-busy', 'true');
+				genText.textContent = 'Generating...';
+				fetch('/run', {
+					method: 'POST',
+					headers: { Accept: 'application/json', 'X-Requested-With': 'fetch' },
+					credentials: 'same-origin'
+				}).then(function (res) {
+					if (!res.ok) return res.text().then(function (t) { throw new Error(t || res.statusText); });
+					return res.json();
+				}).then(function (data) {
+					window.location.href = mergeLeadsURLAfterRun(data);
+				}).catch(function (err) {
+					alert(err.message || 'Pipeline failed');
+					genBtn.disabled = false;
+					genBtn.classList.remove('is-loading');
+					genBtn.setAttribute('aria-busy', 'false');
+					genText.textContent = 'Generate Leads';
+				});
+			});
+		}
+
+		var exportBtn = document.getElementById('btn-export-csv');
+		if (exportBtn && !exportBtn.disabled) {
+			exportBtn.addEventListener('click', function () {
+				if (exportBtn.disabled || exportBtn.classList.contains('is-loading')) return;
+				var form = document.getElementById('form-leads');
+				if (!form) return;
+				var params = new URLSearchParams(new FormData(form));
+				exportBtn.classList.add('is-loading');
+				exportBtn.setAttribute('aria-busy', 'true');
+				exportBtn.disabled = true;
+				fetch('/export.csv?' + params.toString(), { credentials: 'same-origin' })
+					.then(function (res) {
+						if (!res.ok) return res.text().then(function (t) { throw new Error(t || res.statusText); });
+						return res.blob().then(function (blob) {
+							return { blob: blob, cd: res.headers.get('Content-Disposition') };
+						});
+					})
+					.then(function (o) {
+						var name = 'leads_export.csv';
+						var m = o.cd && o.cd.match(/filename="([^"]+)"/);
+						if (m) name = m[1];
+						var url = URL.createObjectURL(o.blob);
+						var a = document.createElement('a');
+						a.href = url;
+						a.download = name;
+						a.rel = 'noopener';
+						document.body.appendChild(a);
+						a.click();
+						a.remove();
+						URL.revokeObjectURL(url);
+					})
+					.catch(function (err) {
+						alert(err.message || 'Export failed');
+					})
+					.finally(function () {
+						exportBtn.classList.remove('is-loading');
+						exportBtn.setAttribute('aria-busy', 'false');
+						exportBtn.disabled = false;
+					});
+			});
+		}
+	})();
+	</script>
+</body>
+</html>

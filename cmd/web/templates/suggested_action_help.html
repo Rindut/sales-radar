@@ -1,0 +1,24 @@
+{{/* Dot is variant string: "contact" | "research" | "ignore" — empty draws no is-current (drawer; JS highlights). */}}
+{{define "suggestedActionHelpBody"}}
+{{- $v := . -}}
+<div class="suggested-action__help-items">
+	<div class="suggested-action__help-item{{if eq $v "contact"}} is-current{{end}}" data-sa-variant="contact">
+		<strong class="suggested-action__help-item-title">Contact now</strong>
+		<p>This lead shows strong fit and clear buying signals.</p>
+		<p>You can proceed with outreach without additional research.</p>
+		<p>Focus on reaching the right contact and starting the conversation.</p>
+	</div>
+	<div class="suggested-action__help-item{{if eq $v "research"}} is-current{{end}}" data-sa-variant="research">
+		<strong class="suggested-action__help-item-title">Research first</strong>
+		<p>This lead has potential but lacks strong or complete signals.</p>
+		<p>You should validate the need, use case, or decision maker before outreach.</p>
+		<p>Quick research is recommended to avoid low-quality contact.</p>
+	</div>
+	<div class="suggested-action__help-item{{if eq $v "ignore"}} is-current{{end}}" data-sa-variant="ignore">
+		<strong class="suggested-action__help-item-title">Ignore</strong>
+		<p>This lead has low relevance, weak signals, or is likely a duplicate.</p>
+		<p>No further action is needed at this time.</p>
+		<p>Focus your effort on higher priority leads.</p>
+	</div>
+</div>
+{{end}}

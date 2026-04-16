@@ -1,0 +1,20 @@
+{{define "suggestedAction"}}
+<section class="suggested-action" aria-label="Suggested action from the system; not a required step">
+	<h3 class="suggested-action__title">Suggested action</h3>
+	<div class="suggested-action__body">
+		<span class="suggested-action__badge suggested-action__badge--{{.Variant}}">{{.Label}}</span>
+		<div class="suggested-action__help-wrap" data-suggested-action-help>
+			<button type="button" class="suggested-action__help-btn" id="sa-help-btn" aria-expanded="false" aria-controls="sa-help-popover" aria-label="Explain what Contact now, Research first, and Ignore mean">
+				<span class="suggested-action__help-ico" aria-hidden="true">i</span>
+			</button>
+			<div class="suggested-action__help-popover" id="sa-help-popover" role="region" aria-labelledby="sa-help-intro" aria-hidden="true">
+				<p class="suggested-action__help-intro" id="sa-help-intro">How to read these recommendations</p>
+				{{template "suggestedActionHelpBody" .Variant}}
+			</div>
+		</div>
+	</div>
+	{{if .Reason}}
+	<p class="suggested-action__reason"><span class="suggested-action__reason-label">Reason</span> {{.Reason}}</p>
+	{{end}}
+</section>
+{{end}}
