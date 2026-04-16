@@ -1,0 +1,6 @@
+/* Design tokens aligned with Sales Radar (legacy HTML UI). Imported from app/globals.css. */
+:root {
+  --color-primary: #216ab7;
+  --color-primary-soft: #eaf3fb;
+  --color-page: #f8fafc;
+}

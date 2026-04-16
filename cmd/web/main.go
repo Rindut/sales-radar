@@ -23,6 +23,8 @@ import (
 	"strings"
 	"time"
 
+	"salesradar/internal/api"
+	"salesradar/internal/api/request"
 	"salesradar/internal/apollo"
 	"salesradar/internal/discovery"
 	"salesradar/internal/domain"
@@ -307,6 +309,7 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
+	api.Register(mux, db)
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFiles))))
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path != "/" {
@@ -466,7 +469,7 @@ func main() {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		f := parseListFilter(r)
+		f := request.ParseListFilter(r)
 		leads, err := store.List(db, f)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -742,7 +745,7 @@ func main() {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		leads, err := store.List(db, parseListFilter(r))
+		leads, err := store.List(db, request.ParseListFilter(r))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -1206,20 +1209,3 @@ func badgeLinkedIn(apolloKeyOK, apolloEnabled, enabled bool) string {
 	return "Configured"
 }
 
-func parseListFilter(r *http.Request) store.ListFilter {
-	q := r.URL.Query()
-	f := store.ListFilter{
-		Query:       strings.TrimSpace(q.Get("q")),
-		ICPMatch:    q.Get("icp_match"),
-		LeadStatus:  q.Get("lead_status"),
-		SalesStatus: q.Get("sales_status"),
-		Industry:    strings.TrimSpace(q.Get("industry")),
-		Action:      strings.TrimSpace(q.Get("action")),
-		SortBy:      q.Get("sort"),
-		OrderAsc:    strings.ToLower(q.Get("order")) != "desc",
-	}
-	if f.SortBy != "priority" && f.SortBy != "confidence" && f.SortBy != "completeness" && f.SortBy != "action" && f.SortBy != "company" {
-		f.SortBy = "priority"
-	}
-	return f
-}
