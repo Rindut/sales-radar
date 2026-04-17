@@ -2,9 +2,10 @@
 FROM golang:1.22-alpine AS builder
 
 WORKDIR /app
-COPY . .
+COPY go.mod go.sum ./
+RUN go mod download
 
-RUN go mod tidy
+COPY . .
 RUN go build -o app ./cmd/api
 
 # Run stage
@@ -12,6 +13,8 @@ FROM alpine:latest
 
 WORKDIR /app
 COPY --from=builder /app/app .
+
+ENV PORT=8080
 
 EXPOSE 8080
 
