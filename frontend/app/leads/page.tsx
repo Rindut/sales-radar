@@ -8,7 +8,7 @@ import { LeadKpiStrip } from "@/components/leads/LeadKpiStrip";
 import { LeadListTable } from "@/components/leads/LeadListTable";
 import { ApiError, apiJson } from "@/lib/api-client";
 import type { LeadsListResponse } from "@/lib/api-types";
-import { toQueryString } from "@/lib/search-params";
+import { resolveSearchParams, toQueryString } from "@/lib/search-params";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,7 @@ type Props = {
 };
 
 export default async function LeadsPage({ searchParams }: Props) {
-  const sp = await (searchParams ?? Promise.resolve({}));
+  const sp = await resolveSearchParams(searchParams);
   const qs = toQueryString(sp);
   const path = qs ? `/api/v1/leads?${qs}` : "/api/v1/leads";
 

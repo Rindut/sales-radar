@@ -1,5 +1,8 @@
-import Link from "next/link";
+"use client";
 
+import { useState } from "react";
+
+import { LeadDetailDrawer } from "@/components/leads/LeadDetailDrawer";
 import type { Lead } from "@/lib/api-types";
 import {
   actionLabel,
@@ -58,11 +61,14 @@ function ActionLabel({ lead }: { lead: Lead }) {
 }
 
 export function LeadListTable({ items }: { items: Lead[] }) {
+  const [drawerLead, setDrawerLead] = useState<Lead | null>(null);
+
   if (items.length === 0) {
     return null;
   }
 
   return (
+    <>
     <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
       <table className="min-w-[900px] w-full border-collapse text-left text-sm">
         <thead>
@@ -87,12 +93,13 @@ export function LeadListTable({ items }: { items: Lead[] }) {
                 {i + 1}
               </td>
               <td className="px-3 py-3 align-top">
-                <Link
-                  href={`/leads/${lead.id}`}
-                  className="font-medium text-primary hover:underline"
+                <button
+                  type="button"
+                  onClick={() => setDrawerLead(lead)}
+                  className="text-left font-medium text-primary hover:underline"
                 >
                   {lead.company?.trim() || "—"}
-                </Link>
+                </button>
                 <div className="mt-0.5 font-mono text-xs text-slate-500">
                   {displayDomain(lead)}
                 </div>
@@ -120,5 +127,7 @@ export function LeadListTable({ items }: { items: Lead[] }) {
         </tbody>
       </table>
     </div>
+    <LeadDetailDrawer lead={drawerLead} onClose={() => setDrawerLead(null)} />
+    </>
   );
 }

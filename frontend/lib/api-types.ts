@@ -75,22 +75,67 @@ export interface LeadDetailResponse {
   lead: Lead & Record<string, unknown>;
 }
 
+/** Mirrors `dto.DiscoverySourcesToggles` — JSON keys match Go struct tags. */
+export interface DiscoverySourcesToggles {
+  google: boolean;
+  seed: boolean;
+  website_crawl: boolean;
+  job_signal: boolean;
+  apollo: boolean;
+  linkedin: boolean;
+}
+
+/** Mirrors `dto.ICPForm` — JSON keys match Go struct tags. */
+export interface ICPForm {
+  _v?: number;
+  target_industries?: string[];
+  region_focus?: string;
+  signal_keys?: string[];
+  excluded_industries?: string[];
+  excluded_segments?: string[];
+  apply_sub50_rule?: boolean | null;
+  weight_industry?: string;
+  weight_signal?: string;
+  weight_size?: string;
+  min_employees?: string;
+  max_employees?: string;
+  target_industry?: string;
+  company_size?: string;
+  country_region?: string;
+  required_signal?: string;
+  excluded_industry?: string;
+}
+
+export interface CatalogOption {
+  id: string;
+  label: string;
+  helper?: string;
+}
+
+export interface SignalCatalogOption {
+  id: string;
+  label: string;
+  helper?: string;
+  keywords?: string[];
+}
+
+export interface SettingsCatalogs {
+  industries: CatalogOption[];
+  signals: SignalCatalogOption[];
+  regions: CatalogOption[];
+  weights: string[];
+}
+
 export interface SettingsResponse {
-  discovery_sources: {
-    google: boolean;
-    seed: boolean;
-    website_crawl: boolean;
-    job_signal: boolean;
-    apollo: boolean;
-    linkedin: boolean;
-  };
-  icp: Record<string, unknown>;
-  catalogs: {
-    industries: { id: string; label: string; helper?: string }[];
-    signals: unknown[];
-    regions: unknown[];
-    weights: string[];
-  };
+  discovery_sources: DiscoverySourcesToggles;
+  icp: ICPForm;
+  catalogs: SettingsCatalogs;
+}
+
+/** Mirrors `dto.PutSettingsRequest` — PUT /api/v1/settings body. */
+export interface PutSettingsRequest {
+  discovery_sources: DiscoverySourcesToggles;
+  icp: ICPForm;
 }
 
 export interface DebugResponse {
