@@ -3,7 +3,7 @@
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import { getApiBaseUrl } from "@/lib/api-client";
+import { clientApiUrl } from "@/lib/api-client";
 
 export function ExportCsvButton({ enabled }: { enabled: boolean }) {
   const searchParams = useSearchParams();
@@ -13,9 +13,8 @@ export function ExportCsvButton({ enabled }: { enabled: boolean }) {
     if (!enabled || loading) return;
     setLoading(true);
     try {
-      const base = getApiBaseUrl();
       const q = searchParams.toString();
-      const url = `${base}/api/v1/export.csv${q ? `?${q}` : ""}`;
+      const url = `${clientApiUrl("/api/v1/export.csv")}${q ? `?${q}` : ""}`;
       const res = await fetch(url, { method: "GET", credentials: "omit" });
       if (!res.ok) {
         const t = await res.text();

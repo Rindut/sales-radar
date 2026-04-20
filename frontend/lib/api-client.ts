@@ -1,8 +1,8 @@
 /**
  * Central HTTP client for the Sales Radar Go API.
- * Use NEXT_PUBLIC_API_BASE_URL (e.g. http://127.0.0.1:8080 for local cmd/api).
  *
- * Auth: attach headers here when middleware/JWT is added (see README).
+ * - If `NEXT_PUBLIC_API_BASE_URL` is set, requests go there directly.
+ * - If unset, use same-origin paths `/api/v1/...` (see `next.config.ts` rewrites → Go).
  */
 
 import type { ApiErrorBody } from "./api-types";
@@ -24,20 +24,47 @@ export function getApiBaseUrl(): string {
   return raw.replace(/\/$/, "");
 }
 
-function joinUrl(path: string): string {
-  const base = getApiBaseUrl();
-  if (!base) {
-    throw new ApiError(
-      500,
-      "NEXT_PUBLIC_API_BASE_URL is not set. Copy .env.example to .env.local."
-    );
-  }
+/**
+ * Browser-only: when `NEXT_PUBLIC_API_BASE_URL` is unset, use same-origin paths
+ * (rewritten by Next.js to the Go API).
+ */
+export function clientApiUrl(path: string): string {
   const p = path.startsWith("/") ? path : `/${path}`;
-  return `${base}${p}`;
+  const base = getApiBaseUrl();
+  if (base) return `${base}${p}`;
+  return p;
 }
 
-export async function apiFetch(path: string, init?: RequestInit): Promise<Response> {
-  const url = joinUrl(path);
+async function resolveUrl(path: string): Promise<string> {
+  const p = path.startsWith("/") ? path : `/${path}`;
+  const base = getApiBaseUrl();
+  if (base) {
+    return `${base}${p}`;
+  }
+  if (typeof window !== "undefined") {
+    return p;
+  }
+  try {
+    const { headers } = await import("next/headers");
+    const h = await headers();
+    const host = h.get("x-forwarded-host") ?? h.get("host");
+    const proto = h.get("x-forwarded-proto") ?? "http";
+    if (host) {
+      return `${proto}://${host}${p}`;
+    }
+  } catch {
+    /* headers() unavailable outside a request */
+  }
+  const fallback =
+    process.env.API_UPSTREAM?.trim() || "http://127.0.0.1:8080";
+  return `${fallback.replace(/\/$/, "")}${p}`;
+}
+
+export async function apiFetch(
+  path: string,
+  init?: RequestInit
+): Promise<Response> {
+  const url = await resolveUrl(path);
   const headers = new Headers(init?.headers);
   if (!headers.has("Accept") && !path.endsWith(".csv")) {
     headers.set("Accept", "application/json");

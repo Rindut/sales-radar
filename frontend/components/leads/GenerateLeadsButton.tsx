@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import { getApiBaseUrl } from "@/lib/api-client";
+import { clientApiUrl } from "@/lib/api-client";
 import type { PipelineRunAPIResponse } from "@/lib/api-types";
 import { mergePipelineRunIntoPath } from "@/lib/pipeline-url";
 
@@ -17,8 +17,7 @@ export function GenerateLeadsButton() {
   async function onClick() {
     setLoading(true);
     try {
-      const base = getApiBaseUrl();
-      const res = await fetch(`${base}/api/v1/pipeline/run`, {
+      const res = await fetch(clientApiUrl("/api/v1/pipeline/run"), {
         method: "POST",
         headers: {
           Accept: "application/json",
