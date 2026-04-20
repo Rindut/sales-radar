@@ -17,7 +17,7 @@ type Props = {
 };
 
 export default async function LeadsPage({ searchParams }: Props) {
-  const sp = await searchParams;
+  const sp = await (searchParams ?? Promise.resolve({}));
   const qs = toQueryString(sp);
   const path = qs ? `/api/v1/leads?${qs}` : "/api/v1/leads";
 

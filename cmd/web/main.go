@@ -289,6 +289,7 @@ func sourceBreakdownFromPipeline(rows []pipeline.SourceBreakdown) []sourceBreakd
 func main() {
 	addr := flag.String("addr", ":8080", "HTTP listen address")
 	dbPath := flag.String("db", "data/salesradar.db", "SQLite database file path")
+	cors := flag.String("cors", "", "Comma-separated allowed browser Origins for CORS. Default: https://sales.bawana.xyz")
 	flag.Parse()
 
 	if err := os.MkdirAll(filepath.Dir(*dbPath), 0o755); err != nil {
@@ -824,8 +825,9 @@ func main() {
 	if strings.HasPrefix(logURL, ":") {
 		logURL = "127.0.0.1" + logURL
 	}
+	handler := api.CORSMiddleware(api.ParseCORSAllowList(*cors), mux)
 	log.Printf("Sales Radar UI listening on http://%s (db=%s)", logURL, *dbPath)
-	log.Fatal(http.Serve(ln, mux))
+	log.Fatal(http.Serve(ln, handler))
 }
 
 func integrationConfigLine(ok bool, detail string) string {
