@@ -16,7 +16,7 @@ import (
 func main() {
 	addr := flag.String("addr", ":8080", "HTTP listen address")
 	dbPath := flag.String("db", "data/salesradar.db", "SQLite database file path")
-	cors := flag.String("cors", "", "Comma-separated allowed browser Origins (Access-Control-Allow-Origin). Default: https://sales.bawana.xyz")
+	cors := flag.String("cors", "", "Comma-separated allowed browser Origins (Access-Control-Allow-Origin). Use * for any origin (dev only). Default includes sales host + localhost:3000.")
 	flag.Parse()
 
 	if err := os.MkdirAll(filepath.Dir(*dbPath), 0o755); err != nil {
