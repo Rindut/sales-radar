@@ -9,6 +9,7 @@ import (
 	"salesradar/internal/apollo"
 	"salesradar/internal/companycheck"
 	"salesradar/internal/domain"
+	"salesradar/internal/failpoint"
 	"salesradar/internal/googlesearch"
 )
 
@@ -86,7 +87,7 @@ outer:
 				ProspectTrace:       trace,
 				EnrichedLinkedInURL: enrichLi,
 			}
-			crawled := enrichWithWebsiteCrawl(ctx, base)
+			crawled := enrichWithWebsiteCrawl(ctx, base, failpoint.WebsiteCrawl())
 			for _, cand := range crawled {
 				if len(out) >= limit {
 					break outer

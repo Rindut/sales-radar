@@ -46,6 +46,11 @@ func LeadFromStore(l store.Lead) Lead {
 		UsedGoogle:        l.UsedGoogle,
 		UsedApollo:        l.UsedApollo,
 		UsedLinkedIn:      l.UsedLinkedIn,
+		WebsiteEnrichmentSelectedURLs: l.WebsiteEnrichmentSelectedURLs,
+		WebsiteEnrichmentSummary:      l.WebsiteEnrichmentSummary,
+		WebsiteEnrichmentSignals:      l.WebsiteEnrichmentSignals,
+		WebsiteEnrichmentStatus:       l.WebsiteEnrichmentStatus,
+		WebsiteEnrichedAt:             l.WebsiteEnrichedAt,
 	}
 }
 

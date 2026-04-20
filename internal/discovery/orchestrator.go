@@ -68,17 +68,6 @@ func (g googleDiscoverySource) Run(ctx context.Context, p domain.RunParams) ([]d
 
 // --- Pool-dependent sources (phase 2) ---
 
-type websitePoolSource struct {
-	pool  []domain.RawCandidate
-	limit int
-}
-
-func (w websitePoolSource) Name() string { return sourceWebsite }
-
-func (w websitePoolSource) Run(ctx context.Context, _ domain.RunParams) ([]domain.RawCandidate, error) {
-	return runWebsiteCrawlSource(ctx, w.pool, w.limit), nil
-}
-
 type jobPoolSource struct {
 	pool  []domain.RawCandidate
 	limit int
@@ -121,17 +110,23 @@ func runSourcesParallel(ctx context.Context, sources []DiscoverySource, p domain
 			if errors.Is(r.err, ErrGoogleNotConfigured) {
 				st.State = ProviderNotConfigured
 				st.SkipReason = "missing API key"
+				st.ReasonCode = "provider_not_configured"
+				st.ReasonMessage = "Provider is enabled but API key is missing."
 			} else {
-				st.State = ProviderError
+				st.State = ProviderFailed
+				st.ReasonCode = "unknown_provider_error"
+				st.ReasonMessage = "Provider execution failed."
 			}
 			st.LastError = r.err.Error()
 			statuses = append(statuses, st)
 		case len(r.out) == 0:
-			st.State = ProviderActive
+			st.State = ProviderSkipped
+			st.ReasonCode = "no_output"
+			st.ReasonMessage = "Provider executed but produced no output."
 			st.LastError = emptyOutputReason(r.name)
 			statuses = append(statuses, st)
 		default:
-			st.State = ProviderActive
+			st.State = ProviderSuccess
 			statuses = append(statuses, st)
 			for i := range r.out {
 				c := &r.out[i]
@@ -145,31 +140,14 @@ func runSourcesParallel(ctx context.Context, sources []DiscoverySource, p domain
 	return merged, statuses
 }
 
-// runPoolSourcesParallel runs website + job in parallel when eligible; otherwise explicit skip rows.
-func runPoolSourcesParallel(ctx context.Context, p domain.RunParams, pool []domain.RawCandidate, limit int, websiteEnv, jobEnv bool, mode string) (extra []domain.RawCandidate, statuses []ProviderStatus) {
+// runPoolSourcesParallel runs the job-signal phase-2 source when eligible; website crawl is handled
+// in applyWebsiteEnrichmentToPool (in-place) so it still runs when the batch is already full.
+func runPoolSourcesParallel(ctx context.Context, p domain.RunParams, pool []domain.RawCandidate, limit int, jobEnv bool, mode string) (extra []domain.RawCandidate, statuses []ProviderStatus) {
 	tog := domain.SourceTogglesOrDefault(p.SourceToggles)
-	websiteEnabled := websiteEnv && tog.WebsiteCrawl
 	jobEnabled := jobEnv && tog.JobSignal
 
 	var sources []DiscoverySource
-	domainEligible := countDomainEligible(pool)
 	jobEligible := countJobEligible(pool)
-	if isMultiLike(mode) && websiteEnabled && domainEligible > 0 {
-		sources = append(sources, websitePoolSource{pool: pool, limit: limit})
-	} else {
-		st := ProviderStatus{ProviderName: sourceWebsite, State: ProviderSkipped}
-		switch {
-		case !isMultiLike(mode):
-			st.SkipReason = "disabled by config"
-		case !websiteEnv:
-			st.SkipReason = "disabled by config"
-		case !tog.WebsiteCrawl:
-			st.SkipReason = "disabled by settings"
-		default:
-			st.SkipReason = fmt.Sprintf("no eligible candidates (eligible=%d/%d)", domainEligible, len(pool))
-		}
-		statuses = append(statuses, st)
-	}
 	if isMultiLike(mode) && jobEnabled && jobEligible > 0 {
 		sources = append(sources, jobPoolSource{pool: pool, limit: limit})
 	} else {
@@ -177,12 +155,21 @@ func runPoolSourcesParallel(ctx context.Context, p domain.RunParams, pool []doma
 		switch {
 		case !isMultiLike(mode):
 			st.SkipReason = "disabled by config"
+			st.ReasonCode = "disabled_by_config"
+			st.ReasonMessage = "Provider disabled by runtime discovery mode."
 		case !jobEnv:
 			st.SkipReason = "disabled by config"
+			st.ReasonCode = "disabled_by_config"
+			st.ReasonMessage = "Provider disabled by environment flag."
 		case !tog.JobSignal:
 			st.SkipReason = "disabled by settings"
+			st.State = ProviderDisabled
+			st.ReasonCode = "disabled_by_settings"
+			st.ReasonMessage = "Provider disabled in discovery settings."
 		default:
 			st.SkipReason = fmt.Sprintf("no eligible candidates (eligible=%d/%d)", jobEligible, len(pool))
+			st.ReasonCode = "no_eligible_candidates"
+			st.ReasonMessage = "No candidates are eligible for this provider."
 		}
 		statuses = append(statuses, st)
 	}
@@ -217,7 +204,13 @@ func emptyOutputReason(source string) string {
 // buildPhase1SourcesWithSkips returns phase-1 sources and explicit skip rows for sources disabled in settings.
 func buildPhase1SourcesWithSkips(mode string, googleCfg googlesearch.Config, t domain.DiscoverySourceToggles) (sources []DiscoverySource, skipped []ProviderStatus) {
 	disabled := func(name string) bool {
-		skipped = append(skipped, ProviderStatus{ProviderName: name, State: ProviderSkipped, SkipReason: "disabled by settings"})
+		skipped = append(skipped, ProviderStatus{
+			ProviderName:  name,
+			State:         ProviderDisabled,
+			SkipReason:    "disabled by settings",
+			ReasonCode:    "disabled_by_settings",
+			ReasonMessage: "Provider disabled in discovery settings.",
+		})
 		return true
 	}
 	switch mode {
@@ -288,7 +281,13 @@ func augmentProviderStatuses(mode string, in []ProviderStatus) []ProviderStatus 
 			if seen[name] {
 				return
 			}
-			out = append(out, ProviderStatus{ProviderName: name, State: ProviderSkipped, SkipReason: reason})
+			out = append(out, ProviderStatus{
+				ProviderName:  name,
+				State:         ProviderDisabled,
+				SkipReason:    reason,
+				ReasonCode:    "disabled_by_config",
+				ReasonMessage: "Provider disabled by runtime discovery mode.",
+			})
 			seen[name] = true
 		}
 		add(sourceGoogle, "disabled by config")
@@ -297,7 +296,13 @@ func augmentProviderStatuses(mode string, in []ProviderStatus) []ProviderStatus 
 	}
 	for _, name := range []string{sourceSeed, sourceGoogle, sourceWebsite, sourceJob} {
 		if !seen[name] {
-			out = append(out, ProviderStatus{ProviderName: name, State: ProviderSkipped, SkipReason: "provider not implemented"})
+			out = append(out, ProviderStatus{
+				ProviderName:  name,
+				State:         ProviderSkipped,
+				SkipReason:    "provider not implemented",
+				ReasonCode:    "provider_not_implemented",
+				ReasonMessage: "Provider is present in debug output but not implemented for this run.",
+			})
 			seen[name] = true
 		}
 	}

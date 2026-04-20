@@ -10,6 +10,7 @@ package discovery
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -26,18 +27,35 @@ var ErrEmptySourceAllowlist = errors.New("discovery: source allowlist is empty")
 type ProviderState string
 
 const (
-	ProviderActive        ProviderState = "active"
+	ProviderSuccess       ProviderState = "success"
 	ProviderSkipped       ProviderState = "skipped"
-	ProviderError         ProviderState = "error"
+	ProviderFailed        ProviderState = "failed"
+	ProviderDegraded      ProviderState = "degraded"
 	ProviderNotConfigured ProviderState = "not_configured"
+	ProviderDisabled      ProviderState = "disabled"
 )
 
 // ProviderStatus is surfaced to run stats/debug UI.
 type ProviderStatus struct {
-	ProviderName string        `json:"provider_name"`
-	State        ProviderState `json:"state"` // configured | unavailable | fallback
-	SkipReason   string        `json:"skip_reason,omitempty"`
-	LastError    string        `json:"last_error,omitempty"`
+	ProviderName      string         `json:"provider_name"`
+	State             ProviderState  `json:"state"`
+	ReasonCode        string         `json:"reason_code,omitempty"`
+	ReasonMessage     string         `json:"reason_message,omitempty"`
+	Details           map[string]any `json:"details,omitempty"`
+	SkipReason        string         `json:"skip_reason,omitempty"`
+	LastError         string         `json:"last_error,omitempty"`
+	ProviderLabel     string         `json:"provider_label,omitempty"`
+	Configured        *bool          `json:"configured,omitempty"`
+	EnabledBySettings *bool          `json:"enabled_by_settings,omitempty"`
+	PagesAttempted    int            `json:"pages_attempted,omitempty"`
+	PagesSucceeded    int            `json:"pages_succeeded,omitempty"`
+	CandidatesTotal   int            `json:"candidates_total,omitempty"`
+	CandidatesSuccess int            `json:"candidates_success,omitempty"`
+	CandidatesSkipped int            `json:"candidates_skipped,omitempty"`
+	CandidatesFailed  int            `json:"candidates_failed,omitempty"`
+	BudgetLimitSec    int            `json:"budget_limit_sec,omitempty"`
+	BudgetUsedSec     int            `json:"budget_used_sec,omitempty"`
+	BudgetRowsSkipped int            `json:"budget_rows_skipped,omitempty"`
 }
 
 // DiscoverResult contains candidates plus provider debug statuses.
@@ -49,13 +67,13 @@ type DiscoverResult struct {
 }
 
 const (
-	sourceSeed       = "seed_discovery"
-	sourceGoogle     = "google_discovery"
-	sourceWebsite    = "website_crawl_discovery"
-	sourceJob        = "job_signal_discovery"
-	sourceDirectory  = "directory_discovery"
-	sourceApollo     = "apollo_enrichment"
-	sourceLinkedIn   = "linkedin_signal"
+	sourceSeed      = "seed_discovery"
+	sourceGoogle    = "google_discovery"
+	sourceWebsite   = "website_crawl_discovery"
+	sourceJob       = "job_signal_discovery"
+	sourceDirectory = "directory_discovery"
+	sourceApollo    = "apollo_enrichment"
+	sourceLinkedIn  = "linkedin_signal"
 )
 
 // Provider abstracts discovery sources so they can be swapped without changing the pipeline.
@@ -113,6 +131,7 @@ func DiscoverWithStatus(ctx context.Context, p domain.RunParams) (DiscoverResult
 		return DiscoverResult{}, ErrEmptySourceAllowlist
 	}
 
+	slog.Info("discovery: starting", "batch_limit", BatchLimit(p))
 	mode := normalizeMode(os.Getenv("DISCOVERY_MODE"))
 	googleCfg := googlesearch.ConfigFromEnv()
 	websiteEnv := strings.TrimSpace(os.Getenv("SALESRADAR_ENABLE_WEBSITE_CRAWL")) != "0"
@@ -124,13 +143,14 @@ func DiscoverWithStatus(ctx context.Context, p domain.RunParams) (DiscoverResult
 	phase1Out, phase1Statuses := runSourcesParallel(ctx, phase1Sources, p)
 	phase1Statuses = append(phase1Skipped, phase1Statuses...)
 	candidatePool := phase1Out
+	slog.Info("discovery: phase1 complete", "candidates", len(candidatePool), "mode", mode)
 	if len(candidatePool) == 0 {
 		dir := applyDirectoryDiscovery(nil, p)
 		if len(dir) > 0 {
 			candidatePool = dir
 			phase1Statuses = append(phase1Statuses, ProviderStatus{
 				ProviderName: sourceDirectory,
-				State:        ProviderActive,
+				State:        ProviderSuccess,
 			})
 		}
 	}
@@ -139,12 +159,19 @@ func DiscoverWithStatus(ctx context.Context, p domain.RunParams) (DiscoverResult
 		candidatePool = candidatePool[:limit]
 	}
 
-	// Phase 2 — pool-dependent sources (website crawl, job signal) in parallel.
+	// Website crawl / Firecrawl — enrich candidates with domains in-place. The old append-based
+	// phase never ran when the batch was full (remaining=0) and could not survive truncate.
+	slog.Info("discovery: website enrichment phase starting", "candidates", len(candidatePool))
+	candidatePool, websiteStatuses := applyWebsiteEnrichmentToPool(ctx, p, candidatePool, websiteEnv)
+	slog.Info("discovery: website enrichment phase finished", "candidates", len(candidatePool))
+	phase1Statuses = append(phase1Statuses, websiteStatuses...)
+
+	// Phase 2 — pool-dependent job-signal source may emit additional rows.
 	remaining := limit - len(candidatePool)
 	if remaining < 0 {
 		remaining = 0
 	}
-	phase2Out, phase2Statuses := runPoolSourcesParallel(ctx, p, candidatePool, remaining, websiteEnv, jobEnv, mode)
+	phase2Out, phase2Statuses := runPoolSourcesParallel(ctx, p, candidatePool, remaining, jobEnv, mode)
 	candidatePool = append(candidatePool, phase2Out...)
 	if len(candidatePool) > limit {
 		candidatePool = candidatePool[:limit]
@@ -184,21 +211,51 @@ func mergeIntegrationProviderStatuses(providers []ProviderStatus, p domain.RunPa
 	apolloKey := strings.TrimSpace(apollo.APIKeyFromEnv())
 
 	if !t.Apollo {
-		add(ProviderStatus{ProviderName: sourceApollo, State: ProviderSkipped, SkipReason: "disabled by settings"})
+		add(ProviderStatus{
+			ProviderName:  sourceApollo,
+			State:         ProviderDisabled,
+			SkipReason:    "disabled by settings",
+			ReasonCode:    "disabled_by_settings",
+			ReasonMessage: "Provider disabled in discovery settings.",
+		})
 	} else if apolloKey == "" {
-		add(ProviderStatus{ProviderName: sourceApollo, State: ProviderNotConfigured, SkipReason: "missing API key"})
+		add(ProviderStatus{
+			ProviderName:  sourceApollo,
+			State:         ProviderNotConfigured,
+			SkipReason:    "missing API key",
+			ReasonCode:    "provider_not_configured",
+			ReasonMessage: "Provider is enabled but API key is missing.",
+		})
 	} else {
-		add(ProviderStatus{ProviderName: sourceApollo, State: ProviderActive})
+		add(ProviderStatus{ProviderName: sourceApollo, State: ProviderSuccess})
 	}
 
 	if !t.LinkedIn {
-		add(ProviderStatus{ProviderName: sourceLinkedIn, State: ProviderSkipped, SkipReason: "disabled by settings"})
+		add(ProviderStatus{
+			ProviderName:  sourceLinkedIn,
+			State:         ProviderDisabled,
+			SkipReason:    "disabled by settings",
+			ReasonCode:    "disabled_by_settings",
+			ReasonMessage: "Provider disabled in discovery settings.",
+		})
 	} else if !t.Apollo {
-		add(ProviderStatus{ProviderName: sourceLinkedIn, State: ProviderSkipped, SkipReason: "requires Apollo enrichment to be enabled"})
+		add(ProviderStatus{
+			ProviderName:  sourceLinkedIn,
+			State:         ProviderSkipped,
+			SkipReason:    "requires Apollo enrichment to be enabled",
+			ReasonCode:    "provider_dependency_missing",
+			ReasonMessage: "LinkedIn provider depends on Apollo enrichment being enabled.",
+		})
 	} else if apolloKey == "" {
-		add(ProviderStatus{ProviderName: sourceLinkedIn, State: ProviderNotConfigured, SkipReason: "missing API key"})
+		add(ProviderStatus{
+			ProviderName:  sourceLinkedIn,
+			State:         ProviderNotConfigured,
+			SkipReason:    "missing API key",
+			ReasonCode:    "provider_not_configured",
+			ReasonMessage: "Provider is enabled but API key is missing.",
+		})
 	} else {
-		add(ProviderStatus{ProviderName: sourceLinkedIn, State: ProviderActive})
+		add(ProviderStatus{ProviderName: sourceLinkedIn, State: ProviderSuccess})
 	}
 
 	return providers
@@ -206,7 +263,7 @@ func mergeIntegrationProviderStatuses(providers []ProviderStatus, p domain.RunPa
 
 func firstActiveSourceName(providers []ProviderStatus, pool []domain.RawCandidate) string {
 	for _, ps := range providers {
-		if ps.State == ProviderActive {
+		if ps.State == ProviderSuccess || ps.State == ProviderDegraded {
 			return ps.ProviderName
 		}
 	}
@@ -271,30 +328,6 @@ func limitAndTag(in []domain.RawCandidate, limit int, sourceTag string) []domain
 	return out
 }
 
-func runWebsiteCrawlSource(ctx context.Context, pool []domain.RawCandidate, limit int) []domain.RawCandidate {
-	if limit <= 0 || len(pool) == 0 {
-		return nil
-	}
-	out := make([]domain.RawCandidate, 0, limit)
-	for i := range pool {
-		if len(out) >= limit {
-			break
-		}
-		base := pool[i]
-		enriched := enrichWithWebsiteCrawl(ctx, base)
-		for _, c := range enriched {
-			if len(out) >= limit {
-				break
-			}
-			if !containsTrace(c.ProspectTrace.SourceTrace, sourceWebsite) {
-				c.ProspectTrace.SourceTrace = append([]string{sourceWebsite}, c.ProspectTrace.SourceTrace...)
-			}
-			out = append(out, c)
-		}
-	}
-	return out
-}
-
 func runJobSignalSource(ctx context.Context, pool []domain.RawCandidate, limit int) []domain.RawCandidate {
 	if limit <= 0 || len(pool) == 0 {
 		return nil
@@ -314,16 +347,6 @@ func runJobSignalSource(ctx context.Context, pool []domain.RawCandidate, limit i
 		out = append(out, c)
 	}
 	return out
-}
-
-func countDomainEligible(pool []domain.RawCandidate) int {
-	n := 0
-	for _, c := range pool {
-		if strings.TrimSpace(c.OfficialDomain) != "" {
-			n++
-		}
-	}
-	return n
 }
 
 func countJobEligible(pool []domain.RawCandidate) int {

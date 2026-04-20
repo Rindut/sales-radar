@@ -16,6 +16,10 @@ export function GenerateLeadsButton() {
 
   async function onClick() {
     setLoading(true);
+    /** Backstop so the button never spins forever if the proxy/API hangs. Slightly above server handler max (45m). */
+    const clientTTLms = 50 * 60 * 1000;
+    const controller = new AbortController();
+    const ttl = window.setTimeout(() => controller.abort(), clientTTLms);
     try {
       const res = await fetch(clientApiUrl("/api/v1/pipeline/run"), {
         method: "POST",
@@ -24,17 +28,29 @@ export function GenerateLeadsButton() {
           "Content-Type": "application/json",
         },
         body: "{}",
+        signal: controller.signal,
       });
       const text = await res.text();
       if (!res.ok) {
         let msg = text.slice(0, 400) || res.statusText;
         try {
-          const j = JSON.parse(text) as { error?: { message?: string } };
+          const j = JSON.parse(text) as {
+            error?: { message?: string; code?: string };
+          };
           if (j?.error?.message) msg = j.error.message;
         } catch {
           /* keep msg */
         }
-        throw new Error(msg);
+        const generic =
+          msg === "Internal Server Error" ||
+          /^[\s]*Internal Server Error[\s]*$/i.test(msg);
+        throw new Error(
+          generic
+            ? `HTTP ${res.status}: request to the Go API failed or timed out (Next dev proxy defaults to 30s; \`experimental.proxyTimeout\` in next.config is set higher—restart dev after pull).`
+            : res.status === 504
+              ? `${msg} (gateway timeout — pipeline hit SALESRADAR_PIPELINE_HANDLER_TIMEOUT_SEC or upstream limit)`
+              : `${msg} (HTTP ${res.status})`
+        );
       }
       const data = JSON.parse(text) as PipelineRunAPIResponse;
       const next = mergePipelineRunIntoPath(
@@ -46,8 +62,18 @@ export function GenerateLeadsButton() {
       router.push(next);
       router.refresh();
     } catch (e) {
-      window.alert(e instanceof Error ? e.message : "Pipeline failed");
+      const aborted =
+        e instanceof Error &&
+        (e.name === "AbortError" || /aborted/i.test(e.message));
+      window.alert(
+        aborted
+          ? `Timed out after ${Math.floor(clientTTLms / 60000)} minutes — aborting the request. Check that the Go API is running and see SALESRADAR_* timeout env vars.`
+          : e instanceof Error
+            ? e.message
+            : "Pipeline failed"
+      );
     } finally {
+      window.clearTimeout(ttl);
       setLoading(false);
     }
   }

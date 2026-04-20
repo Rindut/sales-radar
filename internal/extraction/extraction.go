@@ -134,5 +134,6 @@ func mergeSignals(c domain.RawCandidate, tags taggedFields, signals heuristicSig
 		OfficialDomain:       official,
 		ProspectTrace:        c.ProspectTrace,
 		EnrichedLinkedInURL:  strings.TrimSpace(c.EnrichedLinkedInURL),
+		WebsiteEnrichment:    c.WebsiteEnrichment,
 	}
 }

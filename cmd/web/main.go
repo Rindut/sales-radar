@@ -144,7 +144,30 @@ func priorityPillHTML(score int, icp string) template.HTML {
 	return template.HTML(`<span class="badge-pill badge-priority badge-priority-` + level + `">` + label + `</span>`)
 }
 
+func websiteEnrichmentDisplayText(l store.Lead) string {
+	st := strings.ToLower(strings.TrimSpace(l.WebsiteEnrichmentStatus))
+	sig := strings.TrimSpace(l.WebsiteEnrichmentSignals)
+	sum := strings.TrimSpace(l.WebsiteEnrichmentSummary)
+	if st == "success" || st == "legacy_fallback" {
+		if sig != "" {
+			return sig
+		}
+		if sum != "" {
+			return sum
+		}
+	}
+	if (st == "failed" || st == "skipped") && sum != "" {
+		return sum
+	}
+	return ""
+}
+
 func signalPreviewHTML(l store.Lead) template.HTML {
+	if crawl := websiteEnrichmentDisplayText(l); crawl != "" {
+		short := truncateRunes(crawl, 52)
+		tooltip := signalPreviewTooltipPlain(l)
+		return template.HTML(`<span class="lc-signal" title="` + html.EscapeString(tooltip) + `">` + html.EscapeString(short) + `</span>`)
+	}
 	s := strings.TrimSpace(l.WhyNow)
 	if s == "" {
 		switch strings.ToLower(strings.TrimSpace(l.WhyNowStrength)) {
@@ -158,7 +181,7 @@ func signalPreviewHTML(l store.Lead) template.HTML {
 		return template.HTML(`<span class="lc-signal lc-signal-empty">—</span>`)
 	}
 	short := truncateRunes(s, 52)
-	return template.HTML(`<span class="lc-signal" title="` + html.EscapeString(s) + `">` + html.EscapeString(short) + `</span>`)
+	return template.HTML(`<span class="lc-signal" title="` + html.EscapeString(signalPreviewTooltipPlain(l)) + `">` + html.EscapeString(short) + `</span>`)
 }
 
 func actionLabelHTML(l store.Lead) template.HTML {
@@ -176,12 +199,40 @@ func actionLabelHTML(l store.Lead) template.HTML {
 	return template.HTML(`<span class="lc-action lc-action-muted">` + html.EscapeString(l.Action) + `</span>`)
 }
 
-// friendlyLeadSource returns a short sales-facing label from trace or stored source enum.
-func friendlyLeadSource(l store.Lead) string {
-	for _, t := range l.SourceTrace {
-		if s := discoveryTraceToLabel(strings.TrimSpace(t)); s != "" {
-			return s
+// signalPreviewTooltipPlain matches the Next.js list hover: signals, summary, why-now.
+func signalPreviewTooltipPlain(l store.Lead) string {
+	var parts []string
+	if sig := strings.TrimSpace(l.WebsiteEnrichmentSignals); sig != "" {
+		parts = append(parts, sig)
+	}
+	if sum := strings.TrimSpace(l.WebsiteEnrichmentSummary); sum != "" {
+		if sum != strings.TrimSpace(l.WebsiteEnrichmentSignals) {
+			parts = append(parts, sum)
 		}
+	}
+	if wn := strings.TrimSpace(l.WhyNow); wn != "" {
+		parts = append(parts, wn)
+	}
+	return strings.Join(parts, " — ")
+}
+
+// friendlyLeadSource returns a short sales-facing label from all trace tags (merge order can put Seed before Website crawl).
+func friendlyLeadSource(l store.Lead) string {
+	seen := map[string]struct{}{}
+	var labels []string
+	for _, t := range l.SourceTrace {
+		s := discoveryTraceToLabel(strings.TrimSpace(t))
+		if s == "" {
+			continue
+		}
+		if _, ok := seen[s]; ok {
+			continue
+		}
+		seen[s] = struct{}{}
+		labels = append(labels, s)
+	}
+	if len(labels) > 0 {
+		return strings.Join(labels, " · ")
 	}
 	return sourceEnumToLabel(strings.TrimSpace(l.Source))
 }
@@ -348,7 +399,7 @@ func main() {
 			inputs = append(inputs, store.FromStaged(p.Staged, p.Review))
 		}
 		runDebugJSON, _ := json.Marshal(stats)
-		stored, err := store.ReplaceAll(db, inputs, string(runDebugJSON))
+		stored, err := store.ReplaceAll(db, inputs, string(runDebugJSON), string(stats.RunOutcome))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

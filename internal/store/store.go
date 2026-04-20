@@ -21,39 +21,44 @@ import (
 
 // Lead is a stored row (ReviewLead-style + source + timestamps).
 type Lead struct {
-	ID                int64
-	Company           string
-	Industry          string
-	Size              string
-	ICPMatch          string
-	DuplicateStatus   string
-	LeadStatus        string
-	Confidence        string
-	Summary           string
-	Reasons           []string
-	Source            string
-	CreatedAt         time.Time
-	WebsiteDomain     string
-	LinkedInURL       string
-	CountryRegion     string
-	ReasonForFit      string
-	WhyNow            string
-	WhyNowStrength    string
-	SalesAngle        string
-	PriorityScore     int
-	DataCompleteness  int
-	SalesStatus       string
-	EmployeeSize      string
-	AcceptExplanation string
-	MissingOptional   []string
-	SourceRef         string
-	SalesReady        bool
-	Action            string
-	OfficialDomain    string
-	SourceTrace       []string
-	UsedGoogle        bool
-	UsedApollo        bool
-	UsedLinkedIn      bool
+	ID                            int64
+	Company                       string
+	Industry                      string
+	Size                          string
+	ICPMatch                      string
+	DuplicateStatus               string
+	LeadStatus                    string
+	Confidence                    string
+	Summary                       string
+	Reasons                       []string
+	Source                        string
+	CreatedAt                     time.Time
+	WebsiteDomain                 string
+	LinkedInURL                   string
+	CountryRegion                 string
+	ReasonForFit                  string
+	WhyNow                        string
+	WhyNowStrength                string
+	SalesAngle                    string
+	PriorityScore                 int
+	DataCompleteness              int
+	SalesStatus                   string
+	EmployeeSize                  string
+	AcceptExplanation             string
+	MissingOptional               []string
+	SourceRef                     string
+	SalesReady                    bool
+	Action                        string
+	OfficialDomain                string
+	SourceTrace                   []string
+	UsedGoogle                    bool
+	UsedApollo                    bool
+	UsedLinkedIn                  bool
+	WebsiteEnrichmentSelectedURLs string
+	WebsiteEnrichmentSummary      string
+	WebsiteEnrichmentSignals      string
+	WebsiteEnrichmentStatus       string
+	WebsiteEnrichedAt             string
 }
 
 // ListFilter holds optional query filters and sort.
@@ -220,6 +225,11 @@ func migrate(db *sql.DB) error {
 		{"used_google", `ALTER TABLE leads ADD COLUMN used_google INTEGER DEFAULT 0`},
 		{"used_apollo", `ALTER TABLE leads ADD COLUMN used_apollo INTEGER DEFAULT 0`},
 		{"used_linkedin", `ALTER TABLE leads ADD COLUMN used_linkedin INTEGER DEFAULT 0`},
+		{"website_enrichment_selected_urls", `ALTER TABLE leads ADD COLUMN website_enrichment_selected_urls TEXT`},
+		{"website_enrichment_summary", `ALTER TABLE leads ADD COLUMN website_enrichment_summary TEXT`},
+		{"website_enrichment_signals", `ALTER TABLE leads ADD COLUMN website_enrichment_signals TEXT`},
+		{"website_enrichment_status", `ALTER TABLE leads ADD COLUMN website_enrichment_status TEXT`},
+		{"website_enriched_at", `ALTER TABLE leads ADD COLUMN website_enriched_at TEXT`},
 	}
 	for _, a := range alters {
 		if existing[a.name] {
@@ -227,6 +237,28 @@ func migrate(db *sql.DB) error {
 		}
 		if _, err := db.Exec(a.ddl); err != nil {
 			return fmt.Errorf("migrate add %s: %w", a.name, err)
+		}
+	}
+	prows, err := db.Query(`PRAGMA table_info(pipeline_runs)`)
+	if err != nil {
+		return err
+	}
+	pexisting := map[string]bool{}
+	for prows.Next() {
+		var cid int
+		var name, ctype string
+		var notnull, pk int
+		var dflt sql.NullString
+		if err := prows.Scan(&cid, &name, &ctype, &notnull, &dflt, &pk); err != nil {
+			_ = prows.Close()
+			return err
+		}
+		pexisting[name] = true
+	}
+	_ = prows.Close()
+	if !pexisting["run_outcome"] {
+		if _, err := db.Exec(`ALTER TABLE pipeline_runs ADD COLUMN run_outcome TEXT NOT NULL DEFAULT 'success'`); err != nil {
+			return fmt.Errorf("migrate add pipeline_runs.run_outcome: %w", err)
 		}
 	}
 	return nil
@@ -296,6 +328,7 @@ CREATE TABLE IF NOT EXISTS pipeline_runs (
 	started_at TEXT NOT NULL,
 	finished_at TEXT,
 	status TEXT NOT NULL DEFAULT 'running',
+	run_outcome TEXT NOT NULL DEFAULT 'success',
 	total_raw_candidates INTEGER NOT NULL DEFAULT 0,
 	total_companies INTEGER NOT NULL DEFAULT 0,
 	total_snapshots INTEGER NOT NULL DEFAULT 0,
@@ -440,19 +473,21 @@ type PipelineRunRecord struct {
 	StartedAt     string
 	FinishedAt    sql.NullString
 	Status        string
+	RunOutcome    string
 	DiscoveryMode string
 	RunDebugJSON  sql.NullString
+	ErrorMessage  sql.NullString
 }
 
 // LatestPipelineRun returns the most recently started pipeline run, if any.
 func LatestPipelineRun(db *sql.DB) (PipelineRunRecord, error) {
 	var r PipelineRunRecord
 	err := db.QueryRow(`
-		SELECT id, run_uuid, started_at, finished_at, status, discovery_mode, run_debug_json
+		SELECT id, run_uuid, started_at, finished_at, status, COALESCE(run_outcome,''), discovery_mode, run_debug_json, error_message
 		FROM pipeline_runs
 		ORDER BY started_at DESC, id DESC
 		LIMIT 1
-	`).Scan(&r.ID, &r.RunUUID, &r.StartedAt, &r.FinishedAt, &r.Status, &r.DiscoveryMode, &r.RunDebugJSON)
+	`).Scan(&r.ID, &r.RunUUID, &r.StartedAt, &r.FinishedAt, &r.Status, &r.RunOutcome, &r.DiscoveryMode, &r.RunDebugJSON, &r.ErrorMessage)
 	if err != nil {
 		return PipelineRunRecord{}, err
 	}
@@ -460,7 +495,7 @@ func LatestPipelineRun(db *sql.DB) (PipelineRunRecord, error) {
 }
 
 // ReplaceAll deletes existing rows and inserts new leads (single run snapshot).
-func ReplaceAll(db *sql.DB, rows []LeadInput, runDebugJSON string) (stored int, err error) {
+func ReplaceAll(db *sql.DB, rows []LeadInput, runDebugJSON string, runOutcome string) (stored int, err error) {
 	tx, err := db.Begin()
 	if err != nil {
 		return 0, err
@@ -517,11 +552,13 @@ func ReplaceAll(db *sql.DB, rows []LeadInput, runDebugJSON string) (stored int, 
 		res, err := tx.Exec(`
 			INSERT INTO leads (company, industry, size, icp_match, duplicate_status, lead_status, confidence, summary, reasons, source, created_at,
 				website_domain, linkedin_url, country_region, reason_for_fit, why_now, why_now_strength, sales_angle, priority_score, data_completeness, sales_status, employee_size, accept_explanation, missing_optional, source_ref, sales_ready, action,
-				official_domain, source_trace_json, used_google, used_apollo, used_linkedin)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				official_domain, source_trace_json, used_google, used_apollo, used_linkedin,
+				website_enrichment_selected_urls, website_enrichment_summary, website_enrichment_signals, website_enrichment_status, website_enriched_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			r.Company, r.Industry, r.Size, r.ICPMatch, r.DuplicateStatus, r.LeadStatus, r.Confidence, r.Summary, string(reasonsJSON), r.Source, r.CreatedAt.UTC().Format(time.RFC3339),
 			r.WebsiteDomain, r.LinkedInURL, r.CountryRegion, r.ReasonForFit, r.WhyNow, r.WhyNowStrength, r.SalesAngle, r.PriorityScore, r.DataCompleteness, r.SalesStatus, r.EmployeeSize, r.AcceptExplanation, string(missJSON), r.SourceRef, sr, r.Action,
 			r.OfficialDomain, string(traceJSON), ug, ua, ul,
+			r.WebsiteEnrichmentSelectedURLs, r.WebsiteEnrichmentSummary, r.WebsiteEnrichmentSignals, r.WebsiteEnrichmentStatus, r.WebsiteEnrichedAt,
 		)
 		if err != nil {
 			return 0, err
@@ -561,7 +598,7 @@ func ReplaceAll(db *sql.DB, rows []LeadInput, runDebugJSON string) (stored int, 
 		}
 		stored++
 	}
-	if err := finalizePipelineRun(tx, runID, stored, len(companyByKey), runDebugJSON); err != nil {
+	if err := finalizePipelineRun(tx, runID, stored, len(companyByKey), runDebugJSON, runOutcome); err != nil {
 		return 0, err
 	}
 	if err = tx.Commit(); err != nil {
@@ -575,8 +612,8 @@ func createPipelineRun(tx *sql.Tx, rows []LeadInput) (int64, error) {
 	runUUID := fmt.Sprintf("run-%d", time.Now().UTC().UnixNano())
 	mode := "multi_source"
 	if _, err := tx.Exec(
-		`INSERT INTO pipeline_runs (run_uuid, triggered_by, discovery_mode, scoring_version, started_at, status, total_raw_candidates)
-		 VALUES (?, ?, ?, ?, ?, 'running', ?)`,
+		`INSERT INTO pipeline_runs (run_uuid, triggered_by, discovery_mode, scoring_version, started_at, status, run_outcome, total_raw_candidates)
+		 VALUES (?, ?, ?, ?, ?, 'running', 'running', ?)`,
 		runUUID, "web_run", mode, currentScoringVersion(), now, len(rows),
 	); err != nil {
 		return 0, err
@@ -588,7 +625,7 @@ func createPipelineRun(tx *sql.Tx, rows []LeadInput) (int64, error) {
 	return id, nil
 }
 
-func finalizePipelineRun(tx *sql.Tx, runID int64, snapshots int, companies int, runDebugJSON string) error {
+func finalizePipelineRun(tx *sql.Tx, runID int64, snapshots int, companies int, runDebugJSON string, runOutcome string) error {
 	var dbg any
 	if strings.TrimSpace(runDebugJSON) == "" {
 		dbg = nil
@@ -597,15 +634,30 @@ func finalizePipelineRun(tx *sql.Tx, runID int64, snapshots int, companies int, 
 	}
 	_, err := tx.Exec(
 		`UPDATE pipeline_runs
-		 SET finished_at = ?, status = 'succeeded', total_companies = ?, total_snapshots = ?, run_debug_json = ?
+		 SET finished_at = ?, status = 'succeeded', run_outcome = ?, total_companies = ?, total_snapshots = ?, run_debug_json = ?
 		 WHERE id = ?`,
-		time.Now().UTC().Format(time.RFC3339), companies, snapshots, dbg, runID,
+		time.Now().UTC().Format(time.RFC3339), strings.TrimSpace(runOutcome), companies, snapshots, dbg, runID,
 	)
 	return err
 }
 
 func currentScoringVersion() string {
 	return "icp-v1"
+}
+
+// RecordFailedPipelineRun persists a failed run row when the pipeline cannot produce output rows.
+func RecordFailedPipelineRun(db *sql.DB, discoveryMode, errMsg, runOutcome string) error {
+	runUUID := fmt.Sprintf("run-%d", time.Now().UTC().UnixNano())
+	now := time.Now().UTC().Format(time.RFC3339)
+	if strings.TrimSpace(discoveryMode) == "" {
+		discoveryMode = "multi_source"
+	}
+	_, err := db.Exec(
+		`INSERT INTO pipeline_runs (run_uuid, triggered_by, discovery_mode, scoring_version, started_at, finished_at, status, run_outcome, error_message, total_raw_candidates, total_companies, total_snapshots)
+		 VALUES (?, ?, ?, ?, ?, ?, 'failed', ?, ?, 0, 0, 0)`,
+		runUUID, "web_run", strings.TrimSpace(discoveryMode), currentScoringVersion(), now, now, strings.TrimSpace(runOutcome), strings.TrimSpace(errMsg),
+	)
+	return err
 }
 
 func insertRawCandidate(tx *sql.Tx, runID int64, in LeadInput, order int) (int64, error) {
@@ -871,38 +923,43 @@ func insertLeadSignals(tx *sql.Tx, leadID int64, in LeadInput) error {
 
 // LeadInput is one row to persist (from ReviewLead + source).
 type LeadInput struct {
-	Company           string
-	Industry          string
-	Size              string
-	ICPMatch          string
-	DuplicateStatus   string
-	LeadStatus        string
-	Confidence        string
-	Summary           string
-	Reasons           []string
-	Source            string
-	CreatedAt         time.Time
-	WebsiteDomain     string
-	LinkedInURL       string
-	CountryRegion     string
-	ReasonForFit      string
-	WhyNow            string
-	WhyNowStrength    string
-	SalesAngle        string
-	PriorityScore     int
-	DataCompleteness  int
-	SalesStatus       string
-	EmployeeSize      string
-	AcceptExplanation string
-	MissingOptional   []string
-	SourceRef         string
-	SalesReady        bool
-	Action            string
-	OfficialDomain    string
-	SourceTrace       []string
-	UsedGoogle        bool
-	UsedApollo        bool
-	UsedLinkedIn      bool
+	Company                       string
+	Industry                      string
+	Size                          string
+	ICPMatch                      string
+	DuplicateStatus               string
+	LeadStatus                    string
+	Confidence                    string
+	Summary                       string
+	Reasons                       []string
+	Source                        string
+	CreatedAt                     time.Time
+	WebsiteDomain                 string
+	LinkedInURL                   string
+	CountryRegion                 string
+	ReasonForFit                  string
+	WhyNow                        string
+	WhyNowStrength                string
+	SalesAngle                    string
+	PriorityScore                 int
+	DataCompleteness              int
+	SalesStatus                   string
+	EmployeeSize                  string
+	AcceptExplanation             string
+	MissingOptional               []string
+	SourceRef                     string
+	SalesReady                    bool
+	Action                        string
+	OfficialDomain                string
+	SourceTrace                   []string
+	UsedGoogle                    bool
+	UsedApollo                    bool
+	UsedLinkedIn                  bool
+	WebsiteEnrichmentSelectedURLs string
+	WebsiteEnrichmentSummary      string
+	WebsiteEnrichmentSignals      string
+	WebsiteEnrichmentStatus       string
+	WebsiteEnrichedAt             string
 }
 
 // FromStaged builds storage input from pipeline output.
@@ -914,7 +971,7 @@ func FromStaged(staged domain.StagedOdooLead, r review.ReviewLead) LeadInput {
 	if r.Industry != nil {
 		industry = *r.Industry
 	}
-	return LeadInput{
+	li := LeadInput{
 		Company:           company,
 		Industry:          industry,
 		Size:              r.Size,
@@ -948,13 +1005,24 @@ func FromStaged(staged domain.StagedOdooLead, r review.ReviewLead) LeadInput {
 		UsedApollo:        r.UsedApollo,
 		UsedLinkedIn:      r.UsedLinkedIn,
 	}
+	if we := staged.WebsiteEnrichment; we != nil {
+		if b, err := json.Marshal(we.SelectedURLs); err == nil {
+			li.WebsiteEnrichmentSelectedURLs = string(b)
+		}
+		li.WebsiteEnrichmentSummary = we.Summary
+		li.WebsiteEnrichmentSignals = we.Signals
+		li.WebsiteEnrichmentStatus = we.Status
+		li.WebsiteEnrichedAt = we.EnrichedAt
+	}
+	return li
 }
 
 const leadSelect = `id, company, industry, size, icp_match, duplicate_status, lead_status, confidence, summary, reasons, source, created_at,
 		COALESCE(website_domain,''), COALESCE(linkedin_url,''), COALESCE(country_region,''), COALESCE(reason_for_fit,''), COALESCE(why_now,''), COALESCE(why_now_strength,''), COALESCE(sales_angle,''), COALESCE(priority_score,0),
 		COALESCE(data_completeness,0), COALESCE(sales_status,''), COALESCE(employee_size,''), COALESCE(accept_explanation,''), COALESCE(missing_optional,''), COALESCE(source_ref,''),
 		COALESCE(sales_ready,0), COALESCE(action,''),
-		COALESCE(official_domain,''), COALESCE(source_trace_json,''), COALESCE(used_google,0), COALESCE(used_apollo,0), COALESCE(used_linkedin,0)`
+		COALESCE(official_domain,''), COALESCE(source_trace_json,''), COALESCE(used_google,0), COALESCE(used_apollo,0), COALESCE(used_linkedin,0),
+		COALESCE(website_enrichment_selected_urls,''), COALESCE(website_enrichment_summary,''), COALESCE(website_enrichment_signals,''), COALESCE(website_enrichment_status,''), COALESCE(website_enriched_at,'')`
 
 // List returns leads matching filters.
 func List(db *sql.DB, f ListFilter) ([]Lead, error) {
@@ -1137,6 +1205,7 @@ func scanLead(rows *sql.Rows) (Lead, error) {
 		&l.WebsiteDomain, &l.LinkedInURL, &l.CountryRegion, &l.ReasonForFit, &l.WhyNow, &l.WhyNowStrength, &l.SalesAngle, &l.PriorityScore, &l.DataCompleteness, &l.SalesStatus, &l.EmployeeSize, &l.AcceptExplanation, &missRaw, &l.SourceRef,
 		&sr, &l.Action,
 		&l.OfficialDomain, &traceRaw, &ug, &ua, &ul,
+		&l.WebsiteEnrichmentSelectedURLs, &l.WebsiteEnrichmentSummary, &l.WebsiteEnrichmentSignals, &l.WebsiteEnrichmentStatus, &l.WebsiteEnrichedAt,
 	)
 	if err != nil {
 		return l, err
@@ -1184,6 +1253,7 @@ func getFromLeads(db *sql.DB, id int64) (Lead, error) {
 		&l.WebsiteDomain, &l.LinkedInURL, &l.CountryRegion, &l.ReasonForFit, &l.WhyNow, &l.WhyNowStrength, &l.SalesAngle, &l.PriorityScore, &l.DataCompleteness, &l.SalesStatus, &l.EmployeeSize, &l.AcceptExplanation, &missRaw, &l.SourceRef,
 		&sr, &l.Action,
 		&l.OfficialDomain, &traceRaw, &ug, &ua, &ul,
+		&l.WebsiteEnrichmentSelectedURLs, &l.WebsiteEnrichmentSummary, &l.WebsiteEnrichmentSignals, &l.WebsiteEnrichmentStatus, &l.WebsiteEnrichedAt,
 	)
 	if err != nil {
 		return l, err

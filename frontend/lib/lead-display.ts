@@ -94,16 +94,44 @@ function sourceEnumLabel(src: string): string {
 
 export function sourceLabel(lead: Lead): string {
   const traces = lead.source_trace || [];
+  const labels: string[] = [];
+  const seen = new Set<string>();
   for (const t of traces) {
     const s = traceToLabel(String(t).trim());
-    if (s) return s;
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    labels.push(s);
   }
+  if (labels.length > 0) return labels.join(" · ");
   return sourceEnumLabel(lead.source || "") || "—";
 }
 
 const MAX_SIGNAL = 52;
 
+function truncateSignalText(s: string): string {
+  const runes = Array.from(s);
+  if (runes.length <= MAX_SIGNAL) return s;
+  return runes.slice(0, MAX_SIGNAL).join("") + "…";
+}
+
+function primaryWebsiteEnrichmentText(lead: Lead): string | null {
+  const status = (lead.website_enrichment_status || "").toLowerCase().trim();
+  const signals = (lead.website_enrichment_signals || "").trim();
+  const summary = (lead.website_enrichment_summary || "").trim();
+  if (status === "success" || status === "legacy_fallback") {
+    const crawl = signals || summary;
+    if (crawl) return crawl;
+  }
+  if ((status === "failed" || status === "skipped") && summary) {
+    return summary;
+  }
+  return null;
+}
+
+/** Website crawl / Firecrawl (or legacy HTTP) copy when enrichment produced usable text. */
 export function signalPreview(lead: Lead): string {
+  const crawl = primaryWebsiteEnrichmentText(lead);
+  if (crawl) return truncateSignalText(crawl);
   const s = (lead.why_now || "").trim();
   if (!s) {
     const w = (lead.why_now_strength || "").toLowerCase().trim();
@@ -112,9 +140,20 @@ export function signalPreview(lead: Lead): string {
     if (w === "low") return "—";
     return "—";
   }
-  const runes = Array.from(s);
-  if (runes.length <= MAX_SIGNAL) return s;
-  return runes.slice(0, MAX_SIGNAL).join("") + "…";
+  return truncateSignalText(s);
+}
+
+/** Full text for hover: website signals/summary plus pipeline why-now when present. */
+export function signalPreviewTooltip(lead: Lead): string | undefined {
+  const parts: string[] = [];
+  const signals = (lead.website_enrichment_signals || "").trim();
+  const summary = (lead.website_enrichment_summary || "").trim();
+  if (signals) parts.push(signals);
+  if (summary && summary !== signals) parts.push(summary);
+  const wn = (lead.why_now || "").trim();
+  if (wn) parts.push(wn);
+  if (parts.length === 0) return undefined;
+  return parts.join(" — ");
 }
 
 export function displayDomain(lead: Lead): string {

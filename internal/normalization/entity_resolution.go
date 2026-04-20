@@ -80,7 +80,27 @@ func mergeCandidates(a, b domain.RawCandidate) domain.RawCandidate {
 	base.ProspectTrace.UsedLinkedIn = base.ProspectTrace.UsedLinkedIn || other.ProspectTrace.UsedLinkedIn
 	base.ProspectTrace.SourceTrace = appendUnique(base.ProspectTrace.SourceTrace, other.ProspectTrace.SourceTrace...)
 	base.UnstructuredContext = mergeContext(base.UnstructuredContext, other.UnstructuredContext)
+	base.WebsiteEnrichment = mergeWebsiteEnrichment(base.WebsiteEnrichment, other.WebsiteEnrichment)
 	return base
+}
+
+func mergeWebsiteEnrichment(a, b *domain.WebsiteEnrichment) *domain.WebsiteEnrichment {
+	if a == nil {
+		return b
+	}
+	if b == nil {
+		return a
+	}
+	if b.Status == "success" && a.Status != "success" {
+		return b
+	}
+	if a.Status == "success" {
+		return a
+	}
+	if len(b.SelectedURLs) > len(a.SelectedURLs) {
+		return b
+	}
+	return a
 }
 
 func candidateScore(c domain.RawCandidate) int {

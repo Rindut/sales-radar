@@ -37,6 +37,8 @@ type RawCandidate struct {
 	ProspectTrace  ProspectTrace
 	// EnrichedLinkedInURL is a company page URL from Apollo (or similar), not a search-results placeholder.
 	EnrichedLinkedInURL string
+	// WebsiteEnrichment is set when website crawl / Firecrawl produced structured context (optional).
+	WebsiteEnrichment *WebsiteEnrichment
 }
 
 // NormalizedLead is canonical discovery output used by downstream modules.
@@ -88,6 +90,7 @@ type ExtractedLead struct {
 	OfficialDomain      string
 	ProspectTrace       ProspectTrace
 	EnrichedLinkedInURL string
+	WebsiteEnrichment   *WebsiteEnrichment
 }
 
 // ICPLead adds ICP classification to an extracted lead.

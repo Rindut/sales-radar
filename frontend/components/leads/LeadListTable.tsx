@@ -12,6 +12,7 @@ import {
   readinessKind,
   readinessLabel,
   signalPreview,
+  signalPreviewTooltip,
   sourceLabel,
 } from "@/lib/lead-display";
 
@@ -111,7 +112,7 @@ export function LeadListTable({ items }: { items: Lead[] }) {
                 {sourceLabel(lead)}
               </td>
               <td className="max-w-[220px] px-3 py-3 align-top text-xs text-slate-600">
-                <span title={lead.why_now || undefined}>{signalPreview(lead)}</span>
+                <span title={signalPreviewTooltip(lead)}>{signalPreview(lead)}</span>
               </td>
               <td className="px-3 py-3 align-top">
                 <ReadinessBadge lead={lead} />

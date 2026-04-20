@@ -211,9 +211,9 @@ func makeDiscoveryDebugRow(
 		skipReason = strings.TrimSpace(p.SkipReason)
 		lastErr = strings.TrimSpace(p.LastError)
 	} else if hasRun && (b.Generated > 0 || b.Kept > 0 || b.Qualified > 0) {
-		status = "active"
+		status = "success"
 	}
-	if status == "active" {
+	if status == "success" {
 		if b.Generated == 0 {
 			switch src {
 			case "website_crawl_discovery":
@@ -224,11 +224,11 @@ func makeDiscoveryDebugRow(
 		}
 		skipReason = "—"
 	}
-	if status == "skipped" || status == "not_configured" {
+	if status == "skipped" || status == "not_configured" || status == "disabled" {
 		skipReason = coalesceText(skipReason, inferSkipReason(src, apolloConfigured))
 		lastErr = "—"
 	}
-	if status == "error" {
+	if status == "failed" || status == "degraded" {
 		skipReason = "—"
 	}
 	conv := "N/A"
@@ -253,7 +253,7 @@ func makeDiscoveryDebugRow(
 		ConversionPct:    convPct,
 		SkipReason:       skipReason,
 		LastError:        lastErr,
-		IsError:          status == "error",
+		IsError:          status == "failed" || status == "degraded",
 		IsHighConversion: b.Generated > 0 && convPct > 50,
 	}
 }
@@ -301,7 +301,7 @@ func BuildBreakdownRows(stats *pipeline.RunStats, apolloOK bool) []BreakdownRow 
 }
 
 // FormatRunMeta formats pipeline run record fields for API.
-func FormatRunMeta(rec store.PipelineRunRecord) (id int64, runUUID, started, finished, status, mode string, hasDbg bool) {
-	return rec.ID, rec.RunUUID, formatRunTime(rec.StartedAt), formatNullRunTime(rec.FinishedAt), rec.Status, rec.DiscoveryMode,
+func FormatRunMeta(rec store.PipelineRunRecord) (id int64, runUUID, started, finished, status, outcome, mode string, hasDbg bool) {
+	return rec.ID, rec.RunUUID, formatRunTime(rec.StartedAt), formatNullRunTime(rec.FinishedAt), rec.Status, rec.RunOutcome, rec.DiscoveryMode,
 		rec.RunDebugJSON.Valid && strings.TrimSpace(rec.RunDebugJSON.String) != ""
 }

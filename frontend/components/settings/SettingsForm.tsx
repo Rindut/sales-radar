@@ -4,6 +4,7 @@ import { useMemo, useState, type FormEvent } from "react";
 
 import { ApiError, apiJson } from "@/lib/api-client";
 import type {
+  DiscoveryIntegrationRow,
   DiscoverySourcesToggles,
   ICPForm,
   PutSettingsRequest,
@@ -113,11 +114,67 @@ function formatWeightLabel(w: string): string {
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
 
+function DiscoveryIntegrationStatus({
+  info,
+  sourceOn,
+}: {
+  info: DiscoveryIntegrationRow | undefined;
+  sourceOn: boolean;
+}) {
+  if (!info) {
+    return (
+      <p className="mt-1 text-xs text-slate-500">Integration status unavailable.</p>
+    );
+  }
+  if (!info.requires_integration) {
+    return (
+      <p className="mt-1 text-xs text-slate-500">No integration required</p>
+    );
+  }
+  const ok = info.configured === true;
+  return (
+    <>
+      <p
+        className={`mt-1 text-xs ${ok ? "text-emerald-800" : "text-amber-800"}`}
+      >
+        {ok
+          ? "Integration required · Configured"
+          : "Integration required · Not configured"}
+      </p>
+      {info.provider_name ? (
+        <p className="mt-0.5 text-xs text-slate-600">
+          Provider: {info.provider_name}
+        </p>
+      ) : null}
+      {info.hint ? (
+        <p className="mt-0.5 text-xs leading-snug text-slate-500">{info.hint}</p>
+      ) : null}
+      {sourceOn && !ok && !info.hint ? (
+        <p className="mt-0.5 text-xs leading-snug text-amber-800/95">
+          This source is on but will not run until integration is configured.
+        </p>
+      ) : null}
+    </>
+  );
+}
+
 export function SettingsForm({ initial }: { initial: SettingsResponse }) {
   const allSignalIds = useMemo(
     () => initial.catalogs.signals.map((s) => s.id),
     [initial.catalogs.signals]
   );
+
+  const [discoveryIntegrations, setDiscoveryIntegrations] = useState<
+    DiscoveryIntegrationRow[]
+  >(() => initial.discovery_integrations ?? []);
+
+  const discoveryIntegrationByKey = useMemo(() => {
+    const m = new Map<string, DiscoveryIntegrationRow>();
+    for (const row of discoveryIntegrations) {
+      m.set(row.key, row);
+    }
+    return m;
+  }, [discoveryIntegrations]);
 
   const [discovery, setDiscovery] = useState<DiscoverySourcesToggles>(() => ({
     ...initial.discovery_sources,
@@ -225,6 +282,7 @@ export function SettingsForm({ initial }: { initial: SettingsResponse }) {
       setWeightSize(updated.icp.weight_size || "medium");
       setMinEmployees(updated.icp.min_employees ?? "");
       setMaxEmployees(updated.icp.max_employees ?? "");
+      setDiscoveryIntegrations(updated.discovery_integrations ?? []);
       setSuccess(true);
     } catch (err) {
       setSuccess(false);
@@ -275,6 +333,10 @@ export function SettingsForm({ initial }: { initial: SettingsResponse }) {
               <div className="min-w-0 flex-1">
                 <div className="font-medium text-slate-800">{row.name}</div>
                 <p className="mt-0.5 text-slate-600">{row.description}</p>
+                <DiscoveryIntegrationStatus
+                  info={discoveryIntegrationByKey.get(row.key)}
+                  sourceOn={discovery[row.key]}
+                />
               </div>
               <label className="flex shrink-0 cursor-pointer items-center gap-2">
                 <input

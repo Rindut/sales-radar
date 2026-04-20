@@ -45,6 +45,10 @@ function leadSignature(lead: Lead): string {
     lead.employee_size,
     lead.size,
     lead.confidence,
+    lead.website_enrichment_status,
+    lead.website_enrichment_summary,
+    lead.website_enrichment_signals,
+    lead.website_enriched_at,
   ].join("\u0002");
 }
 
@@ -185,6 +189,12 @@ export function LeadDetailDrawer({
     lead.sales_angle
   );
 
+  const hasWebsiteEnrichment = !!(
+    (lead.website_enrichment_status || "").trim() ||
+    (lead.website_enrichment_summary || "").trim() ||
+    (lead.website_enrichment_signals || "").trim()
+  );
+
   return (
     <>
       <button
@@ -318,6 +328,30 @@ export function LeadDetailDrawer({
               {lang === "id" && !showIdProse ? null : summaryText}
             </p>
           </section>
+
+          {hasWebsiteEnrichment && (
+            <section className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <h3 className="text-sm font-semibold text-slate-900">
+                Website enrichment
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">
+                {(lead.website_enrichment_status || "").trim() || "—"}
+                {lead.website_enriched_at
+                  ? ` · ${lead.website_enriched_at}`
+                  : ""}
+              </p>
+              {(lead.website_enrichment_signals || "").trim() ? (
+                <p className="mt-2 break-words text-sm font-medium text-slate-900">
+                  {lead.website_enrichment_signals}
+                </p>
+              ) : null}
+              {(lead.website_enrichment_summary || "").trim() ? (
+                <p className="mt-2 break-words whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+                  {lead.website_enrichment_summary}
+                </p>
+              ) : null}
+            </section>
+          )}
 
           {hasDetailSections && (
             <div className="mb-4 space-y-4">

@@ -1,5 +1,8 @@
 // Command api serves Sales Radar JSON API only (for api.sales.bawana.xyz or local dev).
 // Auth: none by default; add middleware at internal/api or here when required.
+//
+// Website crawl (optional): set FIRECRAWL_API_KEY for Firecrawl map+selective scrape.
+// SALESRADAR_FIRECRAWL_MAX_PAGES caps pages per company (default 5, max 15).
 package main
 
 import (
