@@ -668,10 +668,7 @@ func insertRawCandidate(tx *sql.Tx, runID int64, in LeadInput, order int) (int64
 		"reasons":      in.Reasons,
 	})
 	name := strings.TrimSpace(in.Company)
-	sourceName := strings.TrimSpace(in.Source)
-	if len(in.SourceTrace) > 0 && strings.TrimSpace(in.SourceTrace[0]) != "" {
-		sourceName = strings.TrimSpace(in.SourceTrace[0])
-	}
+	sourceName := domain.PrimaryDiscoverySourceNameFromTrace(in.SourceTrace, domain.Source(in.Source))
 	res, err := tx.Exec(
 		`INSERT INTO raw_candidates (pipeline_run_id, source_name, source_ref, discovery_id, company_name_raw, domain_raw, unstructured_context, raw_payload_json, normalization_status, dedup_key, ingest_order, created_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'normalized', ?, ?, ?)`,
@@ -1134,9 +1131,9 @@ func listFromSnapshots(db *sql.DB, f ListFilter) ([]Lead, error) {
 		case "high":
 			where = append(where, `priority_score >= 80`)
 		case "medium":
-			where = append(where, `priority_score >= 60 AND priority_score < 80`)
+			where = append(where, `priority_score >= 50 AND priority_score < 80`)
 		case "low":
-			where = append(where, `priority_score < 60`)
+			where = append(where, `priority_score < 50`)
 		}
 	}
 	q := `SELECT id, company_name, COALESCE(industry,''), COALESCE(domain,''), COALESCE(hq_location,''), COALESCE(action,''), COALESCE(priority_score,0), COALESCE(confidence,''), COALESCE(why_now,''), COALESCE(reason_for_fit,''), COALESCE(source_summary_json,''), COALESCE(signals_json,''), updated_at FROM company_snapshots`
@@ -1376,7 +1373,7 @@ func icpMatchFromScore(score int) string {
 	switch {
 	case score >= 80:
 		return "high"
-	case score >= 60:
+	case score >= 50:
 		return "medium"
 	default:
 		return "low"

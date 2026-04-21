@@ -2,6 +2,21 @@ package domain
 
 import "strings"
 
+const (
+	TraceGoogleDiscovery     = "google_discovery"
+	TraceSeedDiscovery       = "seed_discovery"
+	TraceDirectoryDiscovery  = "directory_discovery"
+	TraceWebsiteDiscovery    = "website_crawl_discovery"
+	TraceWebsiteEnrichment   = "website_crawl_enrichment"
+	TraceJobSignalDiscovery  = "job_signal_discovery"
+	TraceMockDiscovery       = "mock_discovery"
+	TraceApolloDiscovery     = "apollo_discovery"
+	TraceApolloEnrichment    = "apollo_enrichment"
+	TraceLinkedInSignal      = "linkedin_signal"
+	TraceLinkedInValidation  = "linkedin_validation"
+	TraceCompanyWebsiteCheck = "company_website_check"
+)
+
 // RunParams is the input contract for a discovery run.
 type RunParams struct {
 	MaxLeadsThisRun int
@@ -48,25 +63,93 @@ type NormalizedLead struct {
 	Industry    string
 }
 
-// PrimaryDiscoverySourceName is the canonical breakdown key for pipeline/UI (first source_trace tag, else Source).
+// PrimaryDiscoverySourceName returns the original discovery source for pipeline/UI.
+// It intentionally ignores later enrichment steps so they do not masquerade as discovery.
 func (c RawCandidate) PrimaryDiscoverySourceName() string {
-	if len(c.ProspectTrace.SourceTrace) > 0 {
-		s := c.ProspectTrace.SourceTrace[0]
-		if strings.TrimSpace(s) != "" {
-			return s
+	return PrimaryDiscoverySourceNameFromTrace(c.ProspectTrace.SourceTrace, c.Source)
+}
+
+// PrimaryDiscoverySourceNameFromTrace returns the original discovery attribution from trace + fallback source.
+// If website crawl appears alongside another discovery source, the non-crawl discovery source wins because
+// website crawl currently acts primarily as enrichment on top of an upstream pool.
+func PrimaryDiscoverySourceNameFromTrace(trace []string, fallback Source) string {
+	discovery := uniqueDiscoverySources(trace)
+	for _, src := range discovery {
+		if src != TraceWebsiteDiscovery {
+			return src
 		}
 	}
-	switch c.Source {
+	if len(discovery) > 0 {
+		return discovery[0]
+	}
+	return fallbackSourceName(fallback)
+}
+
+// EnrichmentSourceNamesFromTrace returns enrichment steps separately from discovery attribution.
+func EnrichmentSourceNamesFromTrace(trace []string, hasWebsiteEnrichment bool) []string {
+	out := make([]string, 0, 3)
+	seen := map[string]struct{}{}
+	add := func(v string) {
+		v = strings.TrimSpace(v)
+		if v == "" {
+			return
+		}
+		if _, ok := seen[v]; ok {
+			return
+		}
+		seen[v] = struct{}{}
+		out = append(out, v)
+	}
+	if hasWebsiteEnrichment {
+		add(TraceWebsiteEnrichment)
+	}
+	for _, raw := range trace {
+		switch strings.TrimSpace(raw) {
+		case TraceWebsiteEnrichment, TraceApolloEnrichment, TraceLinkedInSignal, TraceLinkedInValidation, TraceCompanyWebsiteCheck:
+			add(strings.TrimSpace(raw))
+		}
+	}
+	return out
+}
+
+func uniqueDiscoverySources(trace []string) []string {
+	out := make([]string, 0, 4)
+	seen := map[string]struct{}{}
+	for _, raw := range trace {
+		src := strings.TrimSpace(raw)
+		if !isDiscoveryTrace(src) {
+			continue
+		}
+		if _, ok := seen[src]; ok {
+			continue
+		}
+		seen[src] = struct{}{}
+		out = append(out, src)
+	}
+	return out
+}
+
+func isDiscoveryTrace(src string) bool {
+	switch strings.TrimSpace(src) {
+	case TraceGoogleDiscovery, TraceSeedDiscovery, TraceDirectoryDiscovery, TraceWebsiteDiscovery, TraceJobSignalDiscovery, TraceMockDiscovery, TraceApolloDiscovery:
+		return true
+	default:
+		return false
+	}
+}
+
+func fallbackSourceName(src Source) string {
+	switch src {
 	case SourceGoogle:
-		return "google_discovery"
+		return TraceGoogleDiscovery
 	case SourceCompanyWebsite:
-		return "website_crawl_discovery"
+		return TraceWebsiteDiscovery
 	case SourceJobPortal:
-		return "job_signal_discovery"
+		return TraceJobSignalDiscovery
 	case SourceApollo:
-		return "apollo_enrichment"
+		return TraceApolloDiscovery
 	case SourceLinkedIn:
-		return "linkedin_signal"
+		return TraceLinkedInSignal
 	default:
 		return "unknown_source"
 	}

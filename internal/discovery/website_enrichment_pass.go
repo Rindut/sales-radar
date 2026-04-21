@@ -114,8 +114,8 @@ func applyWebsiteEnrichmentToPool(ctx context.Context, p domain.RunParams, pool 
 			continue
 		}
 		main := enriched[0]
-		if !containsTrace(main.ProspectTrace.SourceTrace, sourceWebsite) {
-			main.ProspectTrace.SourceTrace = append([]string{sourceWebsite}, main.ProspectTrace.SourceTrace...)
+		if !containsTrace(main.ProspectTrace.SourceTrace, domain.TraceWebsiteEnrichment) {
+			main.ProspectTrace.SourceTrace = append(main.ProspectTrace.SourceTrace, domain.TraceWebsiteEnrichment)
 		}
 		out[i] = main
 

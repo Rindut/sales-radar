@@ -27,9 +27,9 @@ export function readinessLabel(lead: Lead): string {
 }
 
 export function priorityBand(lead: Lead): "high" | "medium" | "low" {
-  const icp = (lead.icp_match || "").toLowerCase();
-  if (icp === "high" || lead.priority_score >= 70) return "high";
-  if (icp === "medium" || lead.priority_score >= 40) return "medium";
+  const level = (lead.priority_level || "").toLowerCase().trim();
+  if (level === "high" || lead.priority_score >= 80) return "high";
+  if (level === "medium" || lead.priority_score >= 50) return "medium";
   return "low";
 }
 
@@ -59,10 +59,14 @@ function traceToLabel(trace: string): string {
       return "Directory";
     case "website_crawl_discovery":
       return "Website crawl";
+    case "website_crawl_enrichment":
+      return "Website Crawl";
     case "job_signal_discovery":
       return "Job signal";
     case "mock_discovery":
       return "Mock";
+    case "apollo_discovery":
+      return "Apollo";
     case "apollo_enrichment":
       return "Apollo";
     case "linkedin_validation":
@@ -72,6 +76,19 @@ function traceToLabel(trace: string): string {
       return "";
     default:
       return "";
+  }
+}
+
+function isDisplayEnrichmentTrace(trace: string): boolean {
+  switch ((trace || "").toLowerCase()) {
+    case "website_crawl_enrichment":
+    case "apollo_enrichment":
+    case "linkedin_validation":
+    case "linkedin_signal":
+    case "company_website_check":
+      return true;
+    default:
+      return false;
   }
 }
 
@@ -92,18 +109,31 @@ function sourceEnumLabel(src: string): string {
   }
 }
 
-export function sourceLabel(lead: Lead): string {
-  const traces = lead.source_trace || [];
+export function discoverySourceLabel(lead: Lead): string {
+  const primary = traceToLabel(lead.original_discovery_source || "");
+  if (primary) return primary;
+  return sourceEnumLabel(lead.source || "") || "—";
+}
+
+export function enrichmentSourceLabels(lead: Lead): string[] {
+  const raw = lead.enrichment_sources || [];
   const labels: string[] = [];
   const seen = new Set<string>();
-  for (const t of traces) {
+  for (const t of raw) {
+    if (!isDisplayEnrichmentTrace(t)) continue;
     const s = traceToLabel(String(t).trim());
     if (!s || seen.has(s)) continue;
     seen.add(s);
     labels.push(s);
   }
-  if (labels.length > 0) return labels.join(" · ");
-  return sourceEnumLabel(lead.source || "") || "—";
+  return labels;
+}
+
+export function sourceLabel(lead: Lead): string {
+  const discovery = discoverySourceLabel(lead);
+  const enrichment = enrichmentSourceLabels(lead);
+  if (enrichment.length === 0) return `Discovery: ${discovery}`;
+  return `Discovery: ${discovery} | Enriched by: ${enrichment.join(", ")}`;
 }
 
 const MAX_SIGNAL = 52;

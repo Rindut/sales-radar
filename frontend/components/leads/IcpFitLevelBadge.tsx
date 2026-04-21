@@ -9,11 +9,23 @@ import {
   type ReactNode,
 } from "react";
 
-const TOOLTIP_TEXT = `Confidence Levels:
-
-High → Strong ICP match, ready for outreach
-Medium → Partial match, needs validation
-Low → Weak match, low priority`;
+const TOOLTIP_ROWS = [
+  {
+    label: "High",
+    description: "Strong ICP match, worth immediate attention",
+    labelClassName: "text-emerald-700",
+  },
+  {
+    label: "Medium",
+    description: "Partial fit, needs review",
+    labelClassName: "text-amber-600",
+  },
+  {
+    label: "Low",
+    description: "Weak fit, low priority",
+    labelClassName: "text-slate-500",
+  },
+];
 
 /**
  * ICP tier badge with a tooltip explaining all confidence levels (hover on desktop, tap on touch).
@@ -84,9 +96,21 @@ export function IcpFitLevelBadge({
         <div
           id={tipId}
           role="tooltip"
-          className="pointer-events-none absolute left-1/2 top-full z-[60] mt-1.5 max-w-[250px] -translate-x-1/2 whitespace-pre-line rounded-md bg-slate-800 px-3 py-2 text-left text-[11px] leading-snug text-white shadow-lg"
+          className="pointer-events-none absolute left-1/2 top-full z-[60] mt-2 min-w-[260px] max-w-[320px] -translate-x-1/2 rounded-[8px] border border-[#e5e7eb] bg-white px-[14px] py-[12px] text-left text-[13px] leading-[1.6] text-[#374151] shadow-[0_4px_12px_rgba(0,0,0,0.08)]"
         >
-          {TOOLTIP_TEXT}
+          <div className="space-y-[6px]">
+            <div className="text-[13px] font-medium text-[#374151]">
+              How to read this:
+            </div>
+            {TOOLTIP_ROWS.map((row) => (
+              <div key={row.label} className="grid grid-cols-[70px_minmax(0,1fr)] gap-3">
+                <div className={`font-semibold ${row.labelClassName}`}>
+                  {row.label}
+                </div>
+                <div className="text-[#374151]">{row.description}</div>
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
     </div>

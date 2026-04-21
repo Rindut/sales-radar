@@ -103,15 +103,15 @@ func integrationLastRunLine(hasPersistedRun, hasFullDebug, usedThisRun, canUse b
 	return "Done — not used this run (no candidate touched this integration)"
 }
 
-func linkedinIntegrationLastRun(hasPersistedRun, hasFullDebug, usedThisRun, apolloOK bool) string {
+func linkedinIntegrationLastRun(hasPersistedRun, hasFullDebug, usedThisRun, linkedinOK bool) string {
 	if !hasPersistedRun {
 		return "— (no pipeline run in database yet)"
 	}
 	if !hasFullDebug {
 		return "— (no persisted debug payload — run Generate Leads to capture integration usage)"
 	}
-	if !apolloOK {
-		return "Done — skipped (set SALESRADAR_APOLLO_API_KEY to receive LinkedIn company URLs)"
+	if !linkedinOK {
+		return "Done — skipped (set LINKEDIN_API_KEY to enable LinkedIn integration)"
 	}
 	if usedThisRun {
 		return "Done — LinkedIn company URL from Apollo for ≥1 candidate"
@@ -120,7 +120,7 @@ func linkedinIntegrationLastRun(hasPersistedRun, hasFullDebug, usedThisRun, apol
 }
 
 // BuildIntegrationRows returns Google/Apollo/LinkedIn summary rows.
-func BuildIntegrationRows(hasPersistedRun, hasFullDebug bool, stats *pipeline.RunStats, apolloOK bool) []IntegrationRow {
+func BuildIntegrationRows(hasPersistedRun, hasFullDebug bool, stats *pipeline.RunStats, apolloOK, linkedinOK bool) []IntegrationRow {
 	googleOK := googlesearch.ConfigFromEnv().Configured()
 	var intG, intA, intL bool
 	if hasFullDebug && stats != nil {
@@ -135,15 +135,15 @@ func BuildIntegrationRows(hasPersistedRun, hasFullDebug bool, stats *pipeline.Ru
 		},
 		{
 			Host:    "apollo.io",
-			Role:    "Apollo API (enrichment by domain — never used as official_domain)",
-			Config:  integrationConfigLine(apolloOK, "SALESRADAR_APOLLO_API_KEY set"),
-			LastRun: integrationLastRunLine(hasPersistedRun, hasFullDebug, intA, apolloOK, "enrichment called for ≥1 candidate"),
+			Role:    "Apollo API (company discovery and optional domain enrichment)",
+			Config:  integrationConfigLine(apolloOK, "APOLLO_API_KEY set"),
+			LastRun: integrationLastRunLine(hasPersistedRun, hasFullDebug, intA, apolloOK, "discovery or enrichment touched ≥1 candidate"),
 		},
 		{
 			Host:    "linkedin.com",
 			Role:    "LinkedIn company URL (from Apollo when available — not a primary discovery domain)",
-			Config:  "N/A (no site-wide crawl; URLs validated when Apollo returns them)",
-			LastRun: linkedinIntegrationLastRun(hasPersistedRun, hasFullDebug, intL, apolloOK),
+			Config:  integrationConfigLine(linkedinOK, "LINKEDIN_API_KEY set"),
+			LastRun: linkedinIntegrationLastRun(hasPersistedRun, hasFullDebug, intL, linkedinOK),
 		},
 	}
 }
@@ -165,8 +165,9 @@ func buildDiscoveryDebugRows(
 		"website_crawl_discovery",
 		"job_signal_discovery",
 		"mock_discovery",
-		"apollo_enrichment",
+		"apollo_discovery",
 		"linkedin_signal",
+		"apollo_enrichment",
 	}
 	providerByName := map[string]discovery.ProviderStatus{}
 	for _, p := range providers {
@@ -210,6 +211,9 @@ func makeDiscoveryDebugRow(
 		status = string(p.State)
 		skipReason = strings.TrimSpace(p.SkipReason)
 		lastErr = strings.TrimSpace(p.LastError)
+		if src == "website_crawl_discovery" && b.Generated == 0 && (p.State == discovery.ProviderSuccess || p.State == discovery.ProviderDegraded) {
+			status = "enrichment_only"
+		}
 	} else if hasRun && (b.Generated > 0 || b.Kept > 0 || b.Qualified > 0) {
 		status = "success"
 	}
@@ -262,11 +266,16 @@ func inferSkipReason(source string, apolloConfigured bool) string {
 	switch source {
 	case "directory_discovery":
 		return "no eligible candidates"
+	case "apollo_discovery":
+		if !apolloConfigured {
+			return "missing API key"
+		}
+		return "no Apollo companies returned"
 	case "apollo_enrichment":
 		if !apolloConfigured {
 			return "missing API key"
 		}
-		return "provider not implemented"
+		return "upstream discovery did not require Apollo enrichment"
 	case "linkedin_signal":
 		if !apolloConfigured {
 			return "dependency unavailable: Apollo missing API key"

@@ -31,6 +31,7 @@ export interface Lead {
   why_now_strength?: string;
   sales_angle?: string;
   priority_score: number;
+  priority_level: string;
   data_completeness?: number;
   sales_status: string;
   employee_size?: string;
@@ -49,6 +50,8 @@ export interface Lead {
   website_enrichment_signals?: string;
   website_enrichment_status?: string;
   website_enriched_at?: string;
+  original_discovery_source: string;
+  enrichment_sources?: string[];
 }
 
 export interface PipelineSummaryNumbers {
@@ -134,6 +137,8 @@ export interface SettingsCatalogs {
 /** Mirrors `dto.DiscoveryIntegrationRow` — env/runtime readiness per discovery source. */
 export interface DiscoveryIntegrationRow {
   key: string;
+  available: boolean;
+  enabled: boolean;
   requires_integration: boolean;
   /** Present only when `requires_integration` is true. */
   configured?: boolean;
@@ -183,6 +188,14 @@ export interface DebugResponse {
     error_message?: string;
     pages_attempted: number;
     pages_succeeded: number;
+  };
+  website_crawl_metrics?: {
+    upstream_candidate_pool: number;
+    website_crawl_enrichment_attempted: number;
+    website_crawl_enrichment_succeeded: number;
+    true_website_crawl_discovered: number;
+    true_website_crawl_discovery_supported: boolean;
+    final_stored: number;
   };
   website_crawl_funnel?: {
     firecrawl_raw_candidates: number;

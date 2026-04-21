@@ -119,8 +119,8 @@ func enrichWithWebsiteCrawl(ctx context.Context, in domain.RawCandidate, fpMode 
 		lines = append(lines, fmt.Sprintf("@website_enrichment_signals: %s", strings.TrimSpace(we.Signals)))
 	}
 	in.UnstructuredContext = strings.Join(lines, "\n")
-	if !containsTrace(in.ProspectTrace.SourceTrace, "website_crawl") {
-		in.ProspectTrace.SourceTrace = append(in.ProspectTrace.SourceTrace, "website_crawl")
+	if !containsTrace(in.ProspectTrace.SourceTrace, domain.TraceWebsiteEnrichment) {
+		in.ProspectTrace.SourceTrace = append(in.ProspectTrace.SourceTrace, domain.TraceWebsiteEnrichment)
 	}
 	in.WebsiteEnrichment = we
 
@@ -137,7 +137,7 @@ func enrichWithWebsiteCrawl(ctx context.Context, in domain.RawCandidate, fpMode 
 			fmt.Sprintf("@company: %s", brand),
 			"@website_signal: brand/subsidiary detected",
 		}, "\n")
-		b.ProspectTrace.SourceTrace = append([]string{"website_crawl_discovery"}, in.ProspectTrace.SourceTrace...)
+		b.ProspectTrace.SourceTrace = append([]string{domain.TraceWebsiteDiscovery}, in.ProspectTrace.SourceTrace...)
 		b.WebsiteEnrichment = in.WebsiteEnrichment
 		out = append(out, b)
 	}
@@ -165,8 +165,8 @@ func enrichWithWebsiteCrawlFailpoint(in domain.RawCandidate, domainHost string, 
 			EnrichedAt:     now,
 		}
 		in.UnstructuredContext = strings.TrimSpace(in.UnstructuredContext + "\n@website_description: " + blob)
-		if !containsTrace(in.ProspectTrace.SourceTrace, "website_crawl") {
-			in.ProspectTrace.SourceTrace = append(in.ProspectTrace.SourceTrace, "website_crawl")
+		if !containsTrace(in.ProspectTrace.SourceTrace, domain.TraceWebsiteEnrichment) {
+			in.ProspectTrace.SourceTrace = append(in.ProspectTrace.SourceTrace, domain.TraceWebsiteEnrichment)
 		}
 		return []domain.RawCandidate{in}
 	case failpoint.WebsiteCrawlTimeout:

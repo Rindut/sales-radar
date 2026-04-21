@@ -44,7 +44,17 @@ type RunStats struct {
 	RunOutcome              RunOutcome                 `json:"run_outcome"`
 	WebsiteCrawlEnabled     bool                       `json:"website_crawl_enabled"`
 	WebsiteCrawlConfigured  bool                       `json:"website_crawl_configured"`
+	WebsiteCrawlMetrics     WebsiteCrawlMetrics        `json:"website_crawl_metrics"`
 	WebsiteCrawlFunnel      WebsiteCrawlFunnel         `json:"website_crawl_funnel"`
+}
+
+type WebsiteCrawlMetrics struct {
+	UpstreamCandidatePool           int  `json:"upstream_candidate_pool"`
+	WebsiteCrawlEnrichmentAttempted int  `json:"website_crawl_enrichment_attempted"`
+	WebsiteCrawlEnrichmentSucceeded int  `json:"website_crawl_enrichment_succeeded"`
+	TrueWebsiteCrawlDiscovered      int  `json:"true_website_crawl_discovered"`
+	TrueDiscoverySupported          bool `json:"true_website_crawl_discovery_supported"`
+	FinalStored                     int  `json:"final_stored"`
 }
 
 type WebsiteCrawlDropOffReasons struct {
@@ -118,7 +128,8 @@ func RunWithQualityGate(ctx context.Context, params domain.RunParams) ([]Prepare
 			break
 		}
 	}
-	stats.WebsiteCrawlFunnel = websiteFunnelFromProviderStats(stats.ProviderStatuses)
+	stats.WebsiteCrawlMetrics = websiteMetricsFromProviderStats(stats.ProviderStatuses)
+	stats.WebsiteCrawlMetrics.TrueDiscoverySupported = false
 	icpCfg := params.ICPRuntime
 	if icpCfg == nil {
 		icpCfg = domain.DefaultICPRuntimeSettings()
@@ -159,6 +170,11 @@ func RunWithQualityGate(ctx context.Context, params domain.RunParams) ([]Prepare
 			return nil, RunStats{}, err
 		}
 		if isWebsite {
+			stats.WebsiteCrawlFunnel.RawCandidates++
+			if strings.TrimSpace(c.OfficialDomain) != "" {
+				stats.WebsiteCrawlFunnel.AfterDomainValidation++
+			}
+			stats.WebsiteCrawlMetrics.TrueWebsiteCrawlDiscovered++
 			if icpLead.ICPMatch != domain.ICPNo {
 				stats.WebsiteCrawlFunnel.AfterICPFilter++
 			} else {
@@ -236,6 +252,7 @@ func RunWithQualityGate(ctx context.Context, params domain.RunParams) ([]Prepare
 	out, semMerged := mergeSemanticRows(out)
 	stats.SemanticMerged = semMerged
 	stats.RowsStored = len(out)
+	stats.WebsiteCrawlMetrics.FinalStored = stats.RowsStored
 	for _, r := range out {
 		src := strings.TrimSpace(r.SourceName)
 		if src == "" {
@@ -259,6 +276,7 @@ func RunWithQualityGate(ctx context.Context, params domain.RunParams) ([]Prepare
 		"google_discovery",
 		"seed_discovery",
 		"directory_discovery",
+		"apollo_discovery",
 		"website_crawl_discovery",
 		"job_signal_discovery",
 		"mock_discovery",
@@ -281,51 +299,30 @@ func RunWithQualityGate(ctx context.Context, params domain.RunParams) ([]Prepare
 }
 
 func sourceNameFromStaged(s domain.StagedOdooLead) string {
-	switch s.Source {
-	case domain.SourceGoogle:
-		return "google_discovery"
-	case domain.SourceCompanyWebsite:
-		return "website_crawl_discovery"
-	case domain.SourceJobPortal:
-		return "job_signal_discovery"
-	case domain.SourceApollo:
-		return "apollo_enrichment"
-	case domain.SourceLinkedIn:
-		return "linkedin_signal"
-	default:
-		return "unknown_source"
-	}
+	return domain.PrimaryDiscoverySourceNameFromTrace(s.ProspectTrace.SourceTrace, s.Source)
 }
 
 func sourceNameFromCandidate(c domain.RawCandidate) string {
 	return c.PrimaryDiscoverySourceName()
 }
 
-func websiteFunnelFromProviderStats(statuses []discovery.ProviderStatus) WebsiteCrawlFunnel {
-	var f WebsiteCrawlFunnel
+func websiteMetricsFromProviderStats(statuses []discovery.ProviderStatus) WebsiteCrawlMetrics {
+	var m WebsiteCrawlMetrics
 	for _, st := range statuses {
 		if st.ProviderName != "website_crawl_discovery" {
 			continue
 		}
-		if v, ok := intFromDetails(st.Details, "pool"); ok {
-			f.RawCandidates = v
+		m.UpstreamCandidatePool = intFromDetailsDefault(st.Details, "pool", st.CandidatesTotal)
+		withDomain := intFromDetailsDefault(st.Details, "with_domain", 0)
+		budgetSkipped := intFromDetailsDefault(st.Details, "budget_rows_skipped", st.BudgetRowsSkipped)
+		m.WebsiteCrawlEnrichmentAttempted = withDomain - budgetSkipped
+		if m.WebsiteCrawlEnrichmentAttempted < 0 {
+			m.WebsiteCrawlEnrichmentAttempted = 0
 		}
-		if v, ok := intFromDetails(st.Details, "with_domain"); ok {
-			f.AfterDomainValidation = v
-		}
-		f.DropOffReasons.DroppedNoValidDomain = intFromDetailsDefault(st.Details, "no_domain", 0)
-		if f.RawCandidates == 0 {
-			f.RawCandidates = st.CandidatesTotal
-		}
-		if f.AfterDomainValidation == 0 {
-			f.AfterDomainValidation = f.RawCandidates - f.DropOffReasons.DroppedNoValidDomain
-			if f.AfterDomainValidation < 0 {
-				f.AfterDomainValidation = 0
-			}
-		}
+		m.WebsiteCrawlEnrichmentSucceeded = st.CandidatesSuccess
 		break
 	}
-	return f
+	return m
 }
 
 func intFromDetails(details map[string]any, key string) (int, bool) {

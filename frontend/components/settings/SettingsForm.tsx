@@ -41,7 +41,7 @@ const DISCOVERY_ROWS: {
   {
     key: "apollo",
     name: "Apollo",
-    description: "Company enrichment and firmographics by domain.",
+    description: "Company discovery via Apollo organization search.",
   },
   {
     key: "linkedin",
@@ -49,6 +49,25 @@ const DISCOVERY_ROWS: {
     description: "Adds company LinkedIn URLs when enrichment returns them.",
   },
 ];
+
+const DISCOVERY_SECTION_KEYS: (keyof DiscoverySourcesToggles)[] = [
+  "google",
+  "seed",
+  "job_signal",
+  "apollo",
+];
+
+const ENRICHMENT_SECTION_KEYS: (keyof DiscoverySourcesToggles)[] = [
+  "website_crawl",
+  "linkedin",
+];
+
+const SECTION_TITLE_CLASS =
+  "border-l-[3px] border-[#216ab7] pl-[10px] text-[14px] font-semibold uppercase tracking-[0.5px] text-[#216ab7]";
+const ENABLE_BUYING_SIGNALS = false;
+const ENABLE_MARKET_FOCUS = false;
+const ENABLE_PRIORITY_SETTINGS = false;
+const FIXED_REGION_FOCUS = "idn";
 
 const MIN_EMPLOYEES = ["", "50", "100", "200", "500", "1000"] as const;
 const MAX_EMPLOYEES = ["", "500", "1000", "5000"] as const;
@@ -158,6 +177,57 @@ function DiscoveryIntegrationStatus({
   );
 }
 
+function SourceSettingsSection({
+  title,
+  helper,
+  rows,
+  discovery,
+  discoveryIntegrationByKey,
+  toggleDiscovery,
+}: {
+  title: string;
+  helper: string;
+  rows: typeof DISCOVERY_ROWS;
+  discovery: DiscoverySourcesToggles;
+  discoveryIntegrationByKey: Map<string, DiscoveryIntegrationRow>;
+  toggleDiscovery: (key: keyof DiscoverySourcesToggles) => void;
+}) {
+  return (
+    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <h2 className={SECTION_TITLE_CLASS}>{title}</h2>
+      <p className="mt-2 text-slate-600">{helper}</p>
+      <ul className="mt-4 space-y-3">
+        {rows.map((row) => (
+          <li
+            key={row.key}
+            className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="font-medium text-slate-800">{row.name}</div>
+              <p className="mt-0.5 text-slate-600">{row.description}</p>
+              <DiscoveryIntegrationStatus
+                info={discoveryIntegrationByKey.get(row.key)}
+                sourceOn={discovery[row.key]}
+              />
+            </div>
+            <label className="flex shrink-0 cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                checked={discovery[row.key]}
+                onChange={() => toggleDiscovery(row.key)}
+              />
+              <span className="text-slate-700">
+                {discovery[row.key] ? "On" : "Off"}
+              </span>
+            </label>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function SettingsForm({ initial }: { initial: SettingsResponse }) {
   const allSignalIds = useMemo(
     () => initial.catalogs.signals.map((s) => s.id),
@@ -176,6 +246,15 @@ export function SettingsForm({ initial }: { initial: SettingsResponse }) {
     return m;
   }, [discoveryIntegrations]);
 
+  const discoveryRows = useMemo(
+    () => DISCOVERY_ROWS.filter((row) => DISCOVERY_SECTION_KEYS.includes(row.key)),
+    []
+  );
+  const enrichmentRows = useMemo(
+    () => DISCOVERY_ROWS.filter((row) => ENRICHMENT_SECTION_KEYS.includes(row.key)),
+    []
+  );
+
   const [discovery, setDiscovery] = useState<DiscoverySourcesToggles>(() => ({
     ...initial.discovery_sources,
   }));
@@ -191,9 +270,7 @@ export function SettingsForm({ initial }: { initial: SettingsResponse }) {
     }
     return next;
   });
-  const [region, setRegion] = useState(
-    () => initial.icp.region_focus ?? ""
-  );
+  const [region, setRegion] = useState(FIXED_REGION_FOCUS);
   const [signals, setSignals] = useState<Set<string>>(() =>
     signalSelectionFromICP(initial.icp, allSignalIds)
   );
@@ -247,7 +324,7 @@ export function SettingsForm({ initial }: { initial: SettingsResponse }) {
     setSaving(true);
     const body = buildPayload(discovery, {
       industries,
-      region,
+      region: FIXED_REGION_FOCUS,
       signals,
       allSignalIds,
       applySub50,
@@ -274,7 +351,7 @@ export function SettingsForm({ initial }: { initial: SettingsResponse }) {
         for (const id of ids) nextInd.add(id);
       }
       setIndustries(nextInd);
-      setRegion(updated.icp.region_focus ?? "");
+      setRegion(FIXED_REGION_FOCUS);
       setSignals(signalSelectionFromICP(updated.icp, allSignalIds));
       setApplySub50(sub50On(updated.icp));
       setWeightIndustry(updated.icp.weight_industry || "medium");
@@ -317,47 +394,28 @@ export function SettingsForm({ initial }: { initial: SettingsResponse }) {
         </div>
       ) : null}
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="text-base font-semibold text-slate-900">
-          Discovery sources
-        </h2>
-        <p className="mt-1 text-slate-600">
-          Turn sources on or off for the next pipeline run.
-        </p>
-        <ul className="mt-4 space-y-3">
-          {DISCOVERY_ROWS.map((row) => (
-            <li
-              key={row.key}
-              className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-3 last:border-0 last:pb-0"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="font-medium text-slate-800">{row.name}</div>
-                <p className="mt-0.5 text-slate-600">{row.description}</p>
-                <DiscoveryIntegrationStatus
-                  info={discoveryIntegrationByKey.get(row.key)}
-                  sourceOn={discovery[row.key]}
-                />
-              </div>
-              <label className="flex shrink-0 cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
-                  checked={discovery[row.key]}
-                  onChange={() => toggleDiscovery(row.key)}
-                />
-                <span className="text-slate-700">
-                  {discovery[row.key] ? "On" : "Off"}
-                </span>
-              </label>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <SourceSettingsSection
+        title="Discovery"
+        helper="Choose which sources are used to find candidate companies."
+        rows={discoveryRows}
+        discovery={discovery}
+        discoveryIntegrationByKey={discoveryIntegrationByKey}
+        toggleDiscovery={toggleDiscovery}
+      />
+
+      <SourceSettingsSection
+        title="Enrichment"
+        helper="Choose which sources are used to enrich and validate existing candidates."
+        rows={enrichmentRows}
+        discovery={discovery}
+        discoveryIntegrationByKey={discoveryIntegrationByKey}
+        toggleDiscovery={toggleDiscovery}
+      />
 
       <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="text-base font-semibold text-slate-900">ICP settings</h2>
-        <p className="mt-1 text-slate-600">
-          Who you want to pursue. Applied the next time you run{" "}
+        <h2 className={SECTION_TITLE_CLASS}>Validation / ICP</h2>
+        <p className="mt-2 text-slate-600">
+          Define who you want to pursue and how candidates should be evaluated. Applied the next time you run{" "}
           <strong>Generate Leads</strong>.
         </p>
 
@@ -434,105 +492,112 @@ export function SettingsForm({ initial }: { initial: SettingsResponse }) {
             </label>
           </div>
 
-          <div>
-            <h3 className="font-medium text-slate-800">Region</h3>
-            <label className="mt-3 block max-w-xs">
-              <span className="mb-1 block text-xs font-medium text-slate-600">
-                Market focus
-              </span>
-              <select
-                value={region}
-                onChange={(e) => setRegion(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none ring-primary focus:border-primary focus:ring-1"
-              >
-                {initial.catalogs.regions.map((r) => (
-                  <option key={r.id || "global"} value={r.id}>
-                    {r.label}
-                  </option>
+          {ENABLE_MARKET_FOCUS && (
+            <div>
+              <h3 className="font-medium text-slate-800">Region</h3>
+              <label className="mt-3 block max-w-xs">
+                <span className="mb-1 block text-xs font-medium text-slate-600">
+                  Market focus
+                </span>
+                <select
+                  value={region}
+                  onChange={(e) => setRegion(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none ring-primary focus:border-primary focus:ring-1"
+                >
+                  {initial.catalogs.regions.map((r) => (
+                    <option key={r.id || "global"} value={r.id}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          )}
+
+          {/* TODO: enable when buying signals are connected to discovery and scoring pipeline */}
+          {ENABLE_BUYING_SIGNALS && (
+            <div>
+              <h3 className="font-medium text-slate-800">Buying signals</h3>
+              <p className="mt-1 text-slate-600">
+                What we look for in company text. Uncheck to ignore a theme.
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {initial.catalogs.signals.map((sig) => (
+                  <label
+                    key={sig.id}
+                    className="flex cursor-pointer items-start gap-2 rounded-md border border-slate-100 px-2 py-1.5 hover:bg-slate-50"
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                      checked={signals.has(sig.id)}
+                      onChange={() => toggleSignal(sig.id)}
+                    />
+                    <span className="text-slate-700">{sig.label}</span>
+                  </label>
                 ))}
-              </select>
-            </label>
-          </div>
+              </div>
+            </div>
+          )}
 
-          <div>
-            <h3 className="font-medium text-slate-800">Buying signals</h3>
-            <p className="mt-1 text-slate-600">
-              What we look for in company text. Uncheck to ignore a theme.
-            </p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {initial.catalogs.signals.map((sig) => (
-                <label
-                  key={sig.id}
-                  className="flex cursor-pointer items-start gap-2 rounded-md border border-slate-100 px-2 py-1.5 hover:bg-slate-50"
-                >
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
-                    checked={signals.has(sig.id)}
-                    onChange={() => toggleSignal(sig.id)}
-                  />
-                  <span className="text-slate-700">{sig.label}</span>
+          {ENABLE_PRIORITY_SETTINGS && (
+            <div>
+              <h3 className="font-medium text-slate-800">Priority</h3>
+              <p className="mt-1 text-slate-600">
+                How much each factor raises or lowers the priority score (0–100).
+              </p>
+              <div className="mt-3 grid gap-4 sm:grid-cols-3">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-slate-600">
+                    Industry fit
+                  </span>
+                  <select
+                    value={weightIndustry}
+                    onChange={(e) => setWeightIndustry(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm capitalize outline-none ring-primary focus:border-primary focus:ring-1"
+                  >
+                    {initial.catalogs.weights.map((w) => (
+                      <option key={w} value={w}>
+                        {formatWeightLabel(w)}
+                      </option>
+                    ))}
+                  </select>
                 </label>
-              ))}
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-slate-600">
+                    Signals
+                  </span>
+                  <select
+                    value={weightSignal}
+                    onChange={(e) => setWeightSignal(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none ring-primary focus:border-primary focus:ring-1"
+                  >
+                    {initial.catalogs.weights.map((w) => (
+                      <option key={w} value={w}>
+                        {formatWeightLabel(w)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-medium text-slate-600">
+                    Company size
+                  </span>
+                  <select
+                    value={weightSize}
+                    onChange={(e) => setWeightSize(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none ring-primary focus:border-primary focus:ring-1"
+                  >
+                    {initial.catalogs.weights.map((w) => (
+                      <option key={w} value={w}>
+                        {formatWeightLabel(w)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
             </div>
-          </div>
-
-          <div>
-            <h3 className="font-medium text-slate-800">Priority</h3>
-            <p className="mt-1 text-slate-600">
-              How much each factor raises or lowers the priority score (0–100).
-            </p>
-            <div className="mt-3 grid gap-4 sm:grid-cols-3">
-              <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-600">
-                  Industry fit
-                </span>
-                <select
-                  value={weightIndustry}
-                  onChange={(e) => setWeightIndustry(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm capitalize outline-none ring-primary focus:border-primary focus:ring-1"
-                >
-                  {initial.catalogs.weights.map((w) => (
-                    <option key={w} value={w}>
-                      {formatWeightLabel(w)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-600">
-                  Signals
-                </span>
-                <select
-                  value={weightSignal}
-                  onChange={(e) => setWeightSignal(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none ring-primary focus:border-primary focus:ring-1"
-                >
-                  {initial.catalogs.weights.map((w) => (
-                    <option key={w} value={w}>
-                      {formatWeightLabel(w)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-xs font-medium text-slate-600">
-                  Company size
-                </span>
-                <select
-                  value={weightSize}
-                  onChange={(e) => setWeightSize(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none ring-primary focus:border-primary focus:ring-1"
-                >
-                  {initial.catalogs.weights.map((w) => (
-                    <option key={w} value={w}>
-                      {formatWeightLabel(w)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-          </div>
+          )}
         </div>
       </section>
 

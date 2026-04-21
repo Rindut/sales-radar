@@ -75,6 +75,7 @@ type Lead struct {
 	WhyNowStrength    string   `json:"why_now_strength"`
 	SalesAngle        string   `json:"sales_angle"`
 	PriorityScore     int      `json:"priority_score"`
+	PriorityLevel     string   `json:"priority_level"`
 	DataCompleteness  int      `json:"data_completeness"`
 	SalesStatus       string   `json:"sales_status"`
 	EmployeeSize      string   `json:"employee_size"`
@@ -89,11 +90,13 @@ type Lead struct {
 	UsedApollo        bool     `json:"used_apollo"`
 	UsedLinkedIn      bool     `json:"used_linkedin"`
 	// Website enrichment (Firecrawl / legacy crawl); optional on list/detail.
-	WebsiteEnrichmentSelectedURLs string `json:"website_enrichment_selected_urls,omitempty"`
-	WebsiteEnrichmentSummary      string `json:"website_enrichment_summary,omitempty"`
-	WebsiteEnrichmentSignals      string `json:"website_enrichment_signals,omitempty"`
-	WebsiteEnrichmentStatus       string `json:"website_enrichment_status,omitempty"`
-	WebsiteEnrichedAt             string `json:"website_enriched_at,omitempty"`
+	WebsiteEnrichmentSelectedURLs string   `json:"website_enrichment_selected_urls,omitempty"`
+	WebsiteEnrichmentSummary      string   `json:"website_enrichment_summary,omitempty"`
+	WebsiteEnrichmentSignals      string   `json:"website_enrichment_signals,omitempty"`
+	WebsiteEnrichmentStatus       string   `json:"website_enrichment_status,omitempty"`
+	WebsiteEnrichedAt             string   `json:"website_enriched_at,omitempty"`
+	OriginalDiscoverySource       string   `json:"original_discovery_source"`
+	EnrichmentSources             []string `json:"enrichment_sources,omitempty"`
 }
 
 // --- Settings ---
@@ -155,6 +158,8 @@ type SettingsCatalogs struct {
 // DiscoveryIntegrationRow describes external integration readiness for one discovery source.
 type DiscoveryIntegrationRow struct {
 	Key                 string `json:"key"`
+	Available           bool   `json:"available"`
+	Enabled             bool   `json:"enabled"`
 	RequiresIntegration bool   `json:"requires_integration"`
 	// Configured is only set when RequiresIntegration is true (pointer so JSON can emit false).
 	Configured *bool `json:"configured,omitempty"`
@@ -269,6 +274,15 @@ type DebugWebsiteCrawlFunnel struct {
 	DropOffReasons        DebugWebsiteCrawlDropOffReasons `json:"drop_off_reasons"`
 }
 
+type DebugWebsiteCrawlMetrics struct {
+	UpstreamCandidatePool           int  `json:"upstream_candidate_pool"`
+	WebsiteCrawlEnrichmentAttempted int  `json:"website_crawl_enrichment_attempted"`
+	WebsiteCrawlEnrichmentSucceeded int  `json:"website_crawl_enrichment_succeeded"`
+	TrueWebsiteCrawlDiscovered      int  `json:"true_website_crawl_discovered"`
+	TrueDiscoverySupported          bool `json:"true_website_crawl_discovery_supported"`
+	FinalStored                     int  `json:"final_stored"`
+}
+
 // DebugIntegrationRow is a host/integration summary row.
 type DebugIntegrationRow struct {
 	Host    string `json:"host"`
@@ -326,6 +340,7 @@ type DebugResponse struct {
 	IntegrationRows        []DebugIntegrationRow      `json:"integration_rows"`
 	ProviderDetails        []DebugProviderDetail      `json:"provider_details"`
 	WebsiteCrawl           DebugWebsiteCrawlSummary   `json:"website_crawl"`
+	WebsiteCrawlMetrics    DebugWebsiteCrawlMetrics   `json:"website_crawl_metrics"`
 	WebsiteCrawlFunnel     DebugWebsiteCrawlFunnel    `json:"website_crawl_funnel"`
 	RunOutcome             pipeline.RunOutcome        `json:"run_outcome"`
 	WebsiteCrawlEnabled    bool                       `json:"website_crawl_enabled"`

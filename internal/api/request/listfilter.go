@@ -18,7 +18,7 @@ func ParseListFilter(r *http.Request) store.ListFilter {
 		Industry:    strings.TrimSpace(q.Get("industry")),
 		Action:      strings.TrimSpace(q.Get("action")),
 		SortBy:      q.Get("sort"),
-		OrderAsc:    strings.ToLower(q.Get("order")) != "desc",
+		OrderAsc:    strings.ToLower(q.Get("order")) == "asc",
 	}
 	if f.SortBy != "priority" && f.SortBy != "confidence" && f.SortBy != "completeness" && f.SortBy != "action" && f.SortBy != "company" {
 		f.SortBy = "priority"

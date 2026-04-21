@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 
+	"salesradar/internal/appenv"
 	"salesradar/internal/crm"
 	"salesradar/internal/pipeline"
 	"salesradar/internal/review"
@@ -89,6 +90,9 @@ func printCRMLeadsJSON(reviews []review.ReviewLead, pretty bool) error {
 }
 
 func main() {
+	appenv.Load()
+	log.Printf("Apollo key exists: %t", os.Getenv("APOLLO_API_KEY") != "")
+
 	format := flag.String("format", "json", "output format: json, csv, or crm (CRM-shaped JSON for integration)")
 	pretty := flag.Bool("pretty", true, "pretty-print JSON to stdout (for -format=json or crm; false = compact)")
 	flag.Parse()

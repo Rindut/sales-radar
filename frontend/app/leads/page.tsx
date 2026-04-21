@@ -54,7 +54,7 @@ export default async function LeadsPage({ searchParams }: Props) {
           <div>
             <h1 className="text-lg font-semibold text-slate-900">Lead list</h1>
             <p className="mt-1 text-sm text-slate-600">
-              Pipeline-qualified companies from discovery and enrichment.
+              Leads prioritized by ICP fit.
             </p>
           </div>
           <Suspense

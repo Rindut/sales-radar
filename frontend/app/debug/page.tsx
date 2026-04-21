@@ -99,15 +99,47 @@ export default async function DebugPage() {
             </section>
 
             <section className="rounded-lg border border-slate-200 bg-white p-4 text-sm">
-              <h3 className="font-semibold text-slate-900">Website Crawl Funnel (Firecrawl-only, pre-filter to stored)</h3>
+              <h3 className="font-semibold text-slate-900">Website Crawl Attribution Metrics</h3>
               <p className="mt-1 text-xs text-slate-600">
-                Raw intake shows Website Crawl / Firecrawl candidate volume before internal filtering.
+                Separates upstream discovery volume from Website Crawl enrichment activity.
+              </p>
+              <div className="mt-3 overflow-x-auto">
+                <table className="min-w-[760px] w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-500">
+                      <th className="py-1 pr-2">Upstream candidate pool</th>
+                      <th className="py-1 pr-2">Enrichment attempted</th>
+                      <th className="py-1 pr-2">Enrichment succeeded</th>
+                      <th className="py-1 pr-2">True crawl-discovered</th>
+                      <th className="py-1">Final stored</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-slate-100">
+                      <td className="py-1 pr-2">{data.website_crawl_metrics?.upstream_candidate_pool ?? 0}</td>
+                      <td className="py-1 pr-2">{data.website_crawl_metrics?.website_crawl_enrichment_attempted ?? 0}</td>
+                      <td className="py-1 pr-2">{data.website_crawl_metrics?.website_crawl_enrichment_succeeded ?? 0}</td>
+                      <td className="py-1 pr-2">
+                        {data.website_crawl_metrics?.true_website_crawl_discovered ?? 0}
+                        {data.website_crawl_metrics?.true_website_crawl_discovery_supported === false ? " (not supported)" : ""}
+                      </td>
+                      <td className="py-1">{data.website_crawl_metrics?.final_stored ?? 0}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-slate-200 bg-white p-4 text-sm">
+              <h3 className="font-semibold text-slate-900">True Website Crawl Discovery Funnel</h3>
+              <p className="mt-1 text-xs text-slate-600">
+                This funnel counts candidates whose primary discovery source is truly Website Crawl. It does not use the upstream enrichment pool.
               </p>
               <div className="mt-2 overflow-x-auto">
                 <table className="min-w-[760px] w-full text-left text-xs">
                   <thead>
                     <tr className="border-b border-slate-200 text-slate-500">
-                      <th className="py-1 pr-2">Firecrawl raw intake</th>
+                      <th className="py-1 pr-2">True crawl raw intake</th>
                       <th className="py-1 pr-2">After domain validation</th>
                       <th className="py-1 pr-2">After dedupe</th>
                       <th className="py-1 pr-2">After ICP filter</th>

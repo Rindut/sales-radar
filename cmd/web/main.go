@@ -5,13 +5,13 @@ import (
 	"database/sql"
 	"embed"
 	"encoding/csv"
-	"io/fs"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"html"
 	"html/template"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -26,6 +26,7 @@ import (
 	"salesradar/internal/api"
 	"salesradar/internal/api/request"
 	"salesradar/internal/apollo"
+	"salesradar/internal/appenv"
 	"salesradar/internal/discovery"
 	"salesradar/internal/domain"
 	"salesradar/internal/googlesearch"
@@ -63,12 +64,12 @@ func listTemplateFuncs() template.FuncMap {
 			}
 			return *p
 		},
-		"suggestedAction":             suggestedActionFromLead,
-		"drawerSuggestedLabelID":      drawerSuggestedLabelID,
-		"suggestedActionReasonID":     suggestedActionReasonFromLeadID,
-		"drawerHumanizeIcpReasonID":   drawerHumanizeIcpReasonID,
-		"drawerTranslateNarrativeToID": drawerTranslateNarrativeToID,
-		"drawerTranslateWhyNowToID":    drawerTranslateWhyNowToID,
+		"suggestedAction":               suggestedActionFromLead,
+		"drawerSuggestedLabelID":        drawerSuggestedLabelID,
+		"suggestedActionReasonID":       suggestedActionReasonFromLeadID,
+		"drawerHumanizeIcpReasonID":     drawerHumanizeIcpReasonID,
+		"drawerTranslateNarrativeToID":  drawerTranslateNarrativeToID,
+		"drawerTranslateWhyNowToID":     drawerTranslateWhyNowToID,
 		"drawerTranslateSalesAngleToID": drawerTranslateSalesAngleToID,
 	}
 }
@@ -338,6 +339,9 @@ func sourceBreakdownFromPipeline(rows []pipeline.SourceBreakdown) []sourceBreakd
 }
 
 func main() {
+	appenv.Load()
+	log.Printf("Apollo key exists: %t", os.Getenv("APOLLO_API_KEY") != "")
+
 	addr := flag.String("addr", ":8080", "HTTP listen address")
 	dbPath := flag.String("db", "data/salesradar.db", "SQLite database file path")
 	cors := flag.String("cors", "", "Comma-separated allowed browser Origins for CORS. Use * for any origin (dev only). Default includes sales host + localhost:3000.")
@@ -472,11 +476,11 @@ func main() {
 				ExcludedIndustries: nil,
 				ExcludedSegments:   nil,
 				ApplySub50:         &sub50,
-				MinEmployees:        strings.TrimSpace(r.FormValue("icp_min_employees")),
-				MaxEmployees:        strings.TrimSpace(r.FormValue("icp_max_employees")),
-				WeightIndustry: strings.TrimSpace(r.FormValue("weight_industry")),
-				WeightSignal:   strings.TrimSpace(r.FormValue("weight_signal")),
-				WeightSize:     strings.TrimSpace(r.FormValue("weight_size")),
+				MinEmployees:       strings.TrimSpace(r.FormValue("icp_min_employees")),
+				MaxEmployees:       strings.TrimSpace(r.FormValue("icp_max_employees")),
+				WeightIndustry:     strings.TrimSpace(r.FormValue("weight_industry")),
+				WeightSignal:       strings.TrimSpace(r.FormValue("weight_signal")),
+				WeightSize:         strings.TrimSpace(r.FormValue("weight_size")),
 			}
 			if err := store.SetICPFormSettings(db, icp); err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -572,9 +576,9 @@ func main() {
 		queryString := r.URL.RawQuery
 		preserveParams := preserveRunQueryParams(qu)
 		data := struct {
-			Leads           []store.Lead
-			Filter          store.ListFilter
-			Summary         struct {
+			Leads   []store.Lead
+			Filter  store.ListFilter
+			Summary struct {
 				HasRun        bool
 				TotalLeads    string
 				ContactReady  string
@@ -593,15 +597,15 @@ func main() {
 			QueryString    string
 			PreserveParams []queryParam
 		}{
-			Leads:           leads,
-			Filter:          f,
-			Summary:         summary,
-			PipelineHasRun:  pipelineHasRun,
-			TotalLeadsInDB:  totalLeadsInDB,
-			Total:           len(leads),
-			Industries:      industries,
-			QueryString:     queryString,
-			PreserveParams:  preserveParams,
+			Leads:          leads,
+			Filter:         f,
+			Summary:        summary,
+			PipelineHasRun: pipelineHasRun,
+			TotalLeadsInDB: totalLeadsInDB,
+			Total:          len(leads),
+			Industries:     industries,
+			QueryString:    queryString,
+			PreserveParams: preserveParams,
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_ = tmpl.ExecuteTemplate(w, "list.html", data)
@@ -718,7 +722,7 @@ func main() {
 			}
 		}
 		data := struct {
-			Summary         struct {
+			Summary struct {
 				HasRun        bool
 				TotalLeads    string
 				ContactReady  string
@@ -730,11 +734,11 @@ func main() {
 				Merged        string
 				PipelineText  string
 			}
-			RunMeta           *debugRunMeta
-			StatsDecodeErr    string
-			NoRunsInDB        bool
-			HasPersistedRun   bool
-			HasFullDebug      bool
+			RunMeta         *debugRunMeta
+			StatsDecodeErr  string
+			NoRunsInDB      bool
+			HasPersistedRun bool
+			HasFullDebug    bool
 			ProviderRows    []discovery.ProviderStatus
 			BreakdownRows   []discoveryDebugRow
 			BreakdownTotal  string
@@ -1261,4 +1265,3 @@ func badgeLinkedIn(apolloKeyOK, apolloEnabled, enabled bool) string {
 	}
 	return "Configured"
 }
-

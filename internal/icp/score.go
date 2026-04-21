@@ -8,17 +8,6 @@ import (
 	"salesradar/internal/enrich"
 )
 
-func weightMult(label string) float64 {
-	switch strings.ToLower(strings.TrimSpace(label)) {
-	case "high":
-		return 1.2
-	case "low":
-		return 0.82
-	default:
-		return 1.0
-	}
-}
-
 func regionScoreBump(lead *domain.ICPLead, focus string) int {
 	if lead == nil || strings.TrimSpace(focus) == "" {
 		return 0
@@ -27,17 +16,35 @@ func regionScoreBump(lead *domain.ICPLead, focus string) int {
 	switch focus {
 	case "idn":
 		if containsAny(lower, "indonesia", "jakarta", "surabaya", "bandung", "yogyakarta") {
-			return 4
+			return 20
 		}
 	case "sea":
 		if containsAny(lower, "indonesia", "malaysia", "singapore", "thailand", "vietnam", "philippines", "jakarta", "bangkok") {
-			return 4
+			return 20
 		}
 	}
 	return 0
 }
 
-// applyICPScore sets ICPScore (0–100) and ScoreAction from match, bucket, size, LXP/domain/signals.
+func sizeScore(lead *domain.ICPLead, sizeState sizeDecision, cfg *domain.ICPRuntimeSettings) int {
+	if lead == nil || cfg == nil {
+		return 0
+	}
+	if sizeState == sizeMeets {
+		return 30
+	}
+	if len(disqualifiersForConfiguredSize(lead.CompanySizeEstimated, cfg.MinEmployees, cfg.MaxEmployees)) == 0 {
+		if cfg.MinEmployees > 0 || cfg.MaxEmployees > 0 {
+			_, _, ok := settingsEmployeeBounds(lead.CompanySizeEstimated)
+			if ok {
+				return 30
+			}
+		}
+	}
+	return 0
+}
+
+// applyICPScore sets ICPScore (0–100) and ScoreAction from explicit ICP components.
 func applyICPScore(lead *domain.ICPLead, bucket domain.ICPIndustryBucket, sizeState sizeDecision, lxp bool, cfg *domain.ICPRuntimeSettings) {
 	if lead == nil {
 		return
@@ -45,72 +52,22 @@ func applyICPScore(lead *domain.ICPLead, bucket domain.ICPIndustryBucket, sizeSt
 	if cfg == nil {
 		cfg = domain.DefaultICPRuntimeSettings()
 	}
-	ctx := strings.ToLower(combinedContext(&lead.ExtractedLead))
-
-	wI := weightMult(cfg.WeightIndustry)
-	wSig := weightMult(cfg.WeightSignal)
-	wSz := weightMult(cfg.WeightSize)
-
+	leadID := InferLeadIndustryID(&lead.ExtractedLead, bucket)
 	score := 0
-	switch lead.ICPMatch {
-	case domain.ICPYes:
-		score += 38
-	case domain.ICPPartial:
-		score += 26
-	default:
-		score += 6
+	if industryTargetOk(cfg, leadID, bucket) && leadID != "" {
+		score += 40
 	}
-
-	var bucketPts float64
-	switch bucket {
-	case domain.BucketBanking:
-		bucketPts = 18
-	case domain.BucketRetail:
-		bucketPts = 15
-	case domain.BucketHospitality:
-		bucketPts = 12
-	}
-	score += int(bucketPts * wI)
-
-	var sizePts float64
-	switch sizeState {
-	case sizeMeets:
-		sizePts = 22
-	case sizeUnknown:
-		sizePts = 8
-	}
-	score += int(sizePts * wSz)
-
-	var lxpPts float64
-	if lxp {
-		lxpPts = 10
-	}
-	score += int(lxpPts * wSig)
-	if strings.Contains(ctx, "growth_signal") {
-		score += int(5 * wSig)
-	}
-	if strings.Contains(ctx, "job_signal") {
-		score += int(4 * wSig)
-	}
-
+	score += sizeScore(lead, sizeState, cfg)
 	score += regionScoreBump(lead, cfg.RegionFocus)
+	if lxp {
+		score += 10
+	}
 
 	dom := companycheck.SanitizeCompanyWebsiteDomain(lead.OfficialDomain)
 	if dom == "" {
 		dom = enrich.WebsiteDomainFromRef(lead.SourceRef)
 	}
 	dom = companycheck.SanitizeCompanyWebsiteDomain(dom)
-	if dom != "" {
-		score += 12
-	}
-
-	if lead.ProspectTrace.UsedApollo {
-		score += 3
-	}
-	if lead.ProspectTrace.UsedLinkedIn {
-		score += 3
-	}
-
 	if score > 100 {
 		score = 100
 	}

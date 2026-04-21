@@ -1,10 +1,10 @@
 // Package discovery performs lead discovery from configured sources.
 //
 // When SALESRADAR_GOOGLE_API_KEY and SALESRADAR_GOOGLE_CX are set, Discover runs
-// Google Custom Search first, then optional Apollo enrichment by domain and LinkedIn URLs from Apollo.
+// Google Custom Search and Apollo organization discovery first, then optional LinkedIn URLs from Apollo.
 // Set SALESRADAR_USE_MOCK_DISCOVERY=1 to force deterministic mock candidates (tests / offline).
 //
-// Apollo: optional SALESRADAR_APOLLO_API_KEY for org lookup — not used as a primary domain source.
+// Apollo: optional APOLLO_API_KEY for organization discovery and optional domain enrichment.
 package discovery
 
 import (
@@ -72,7 +72,7 @@ const (
 	sourceWebsite   = "website_crawl_discovery"
 	sourceJob       = "job_signal_discovery"
 	sourceDirectory = "directory_discovery"
-	sourceApollo    = "apollo_enrichment"
+	sourceApollo    = "apollo_discovery"
 	sourceLinkedIn  = "linkedin_signal"
 )
 
@@ -262,13 +262,16 @@ func mergeIntegrationProviderStatuses(providers []ProviderStatus, p domain.RunPa
 }
 
 func firstActiveSourceName(providers []ProviderStatus, pool []domain.RawCandidate) string {
+	if len(pool) > 0 {
+		return pool[0].PrimaryDiscoverySourceName()
+	}
 	for _, ps := range providers {
+		if ps.ProviderName == sourceWebsite || ps.ProviderName == sourceApollo || ps.ProviderName == sourceLinkedIn {
+			continue
+		}
 		if ps.State == ProviderSuccess || ps.State == ProviderDegraded {
 			return ps.ProviderName
 		}
-	}
-	if len(pool) > 0 {
-		return pool[0].PrimaryDiscoverySourceName()
 	}
 	return sourceSeed
 }

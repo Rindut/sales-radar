@@ -22,6 +22,7 @@ import (
 	"salesradar/internal/firecrawl"
 	"salesradar/internal/googlesearch"
 	"salesradar/internal/icp"
+	"salesradar/internal/linkedin"
 	"salesradar/internal/pipeline"
 	"salesradar/internal/store"
 )
@@ -158,15 +159,17 @@ func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
 func boolPtr(b bool) *bool { return &b }
 
 // buildDiscoveryIntegrations mirrors legacy settings badges (cmd/web buildDiscoverySourceRows):
-// Google needs Google CSE env; Apollo needs API key; LinkedIn needs Apollo key + Apollo source enabled;
+// Google needs Google CSE env; Apollo needs API key; LinkedIn needs its own credential;
 // Website crawl uses Firecrawl when configured, else legacy HTTP fetch only.
 func buildDiscoveryIntegrations(t dto.DiscoverySourcesToggles) []dto.DiscoveryIntegrationRow {
 	gOK := googlesearch.ConfigFromEnv().Configured()
 	apolloOK := strings.TrimSpace(apollo.APIKeyFromEnv()) != ""
-	linkedinOK := apolloOK && t.Apollo
+	linkedinOK := linkedin.Configured()
 	fcOK := firecrawl.Configured()
 	webRow := dto.DiscoveryIntegrationRow{
 		Key:                 "website_crawl",
+		Available:           true,
+		Enabled:             t.WebsiteCrawl,
 		RequiresIntegration: true,
 		Configured:          boolPtr(fcOK),
 		ProviderName:        "Firecrawl",
@@ -176,12 +179,12 @@ func buildDiscoveryIntegrations(t dto.DiscoverySourcesToggles) []dto.DiscoveryIn
 	}
 
 	return []dto.DiscoveryIntegrationRow{
-		{Key: "google", RequiresIntegration: true, Configured: boolPtr(gOK)},
-		{Key: "seed", RequiresIntegration: false},
+		{Key: "google", Available: true, Enabled: t.Google, RequiresIntegration: true, Configured: boolPtr(gOK)},
+		{Key: "seed", Available: true, Enabled: t.Seed, RequiresIntegration: false},
 		webRow,
-		{Key: "job_signal", RequiresIntegration: false},
-		{Key: "apollo", RequiresIntegration: true, Configured: boolPtr(apolloOK)},
-		{Key: "linkedin", RequiresIntegration: true, Configured: boolPtr(linkedinOK)},
+		{Key: "job_signal", Available: true, Enabled: t.JobSignal, RequiresIntegration: false},
+		{Key: "apollo", Available: true, Enabled: t.Apollo, RequiresIntegration: true, Configured: boolPtr(apolloOK), ProviderName: "Apollo"},
+		{Key: "linkedin", Available: true, Enabled: t.LinkedIn, RequiresIntegration: true, Configured: boolPtr(linkedinOK), ProviderName: "LinkedIn", Hint: "Set LINKEDIN_API_KEY to enable LinkedIn integration."},
 	}
 }
 
@@ -328,6 +331,7 @@ func (s *Server) handleDebug(w http.ResponseWriter, r *http.Request) {
 	}
 	hasFullDebug := stats != nil
 	apolloOK := apollo.APIKeyFromEnv() != ""
+	linkedinOK := linkedin.Configured()
 
 	var summary dto.DebugSummary
 	if hasFullDebug {
@@ -385,7 +389,7 @@ func (s *Server) handleDebug(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	intRows := debugview.BuildIntegrationRows(hasPersistedRun, hasFullDebug, stats, apolloOK)
+	intRows := debugview.BuildIntegrationRows(hasPersistedRun, hasFullDebug, stats, apolloOK, linkedinOK)
 	apiInt := make([]dto.DebugIntegrationRow, 0, len(intRows))
 	for _, row := range intRows {
 		apiInt = append(apiInt, dto.DebugIntegrationRow{
@@ -457,6 +461,7 @@ func (s *Server) handleDebug(w http.ResponseWriter, r *http.Request) {
 	var runOutcome pipeline.RunOutcome
 	webEnabled := false
 	webConfigured := false
+	webMetrics := dto.DebugWebsiteCrawlMetrics{}
 	webFunnel := dto.DebugWebsiteCrawlFunnel{}
 	if hasPersistedRun {
 		runOutcome = pipeline.RunOutcome(strings.TrimSpace(rec.RunOutcome))
@@ -465,6 +470,14 @@ func (s *Server) handleDebug(w http.ResponseWriter, r *http.Request) {
 		runOutcome = stats.RunOutcome
 		webEnabled = stats.WebsiteCrawlEnabled
 		webConfigured = stats.WebsiteCrawlConfigured
+		webMetrics = dto.DebugWebsiteCrawlMetrics{
+			UpstreamCandidatePool:           stats.WebsiteCrawlMetrics.UpstreamCandidatePool,
+			WebsiteCrawlEnrichmentAttempted: stats.WebsiteCrawlMetrics.WebsiteCrawlEnrichmentAttempted,
+			WebsiteCrawlEnrichmentSucceeded: stats.WebsiteCrawlMetrics.WebsiteCrawlEnrichmentSucceeded,
+			TrueWebsiteCrawlDiscovered:      stats.WebsiteCrawlMetrics.TrueWebsiteCrawlDiscovered,
+			TrueDiscoverySupported:          stats.WebsiteCrawlMetrics.TrueDiscoverySupported,
+			FinalStored:                     stats.WebsiteCrawlMetrics.FinalStored,
+		}
 		webFunnel = dto.DebugWebsiteCrawlFunnel{
 			RawCandidates:         stats.WebsiteCrawlFunnel.RawCandidates,
 			AfterDomainValidation: stats.WebsiteCrawlFunnel.AfterDomainValidation,
@@ -502,6 +515,7 @@ func (s *Server) handleDebug(w http.ResponseWriter, r *http.Request) {
 		IntegrationRows:        apiInt,
 		ProviderDetails:        providerDetails,
 		WebsiteCrawl:           web,
+		WebsiteCrawlMetrics:    webMetrics,
 		WebsiteCrawlFunnel:     webFunnel,
 		RunOutcome:             runOutcome,
 		WebsiteCrawlEnabled:    webEnabled,

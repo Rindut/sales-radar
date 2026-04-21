@@ -6,9 +6,6 @@ import { spGet } from "@/lib/search-params";
 type FilterValues = {
   q: string;
   icp_match: string;
-  sales_status: string;
-  action: string;
-  lead_status: string;
   industry: string;
   sort: string;
   order: string;
@@ -20,12 +17,9 @@ function buildFilterValues(
   return {
     q: spGet(sp, "q"),
     icp_match: spGet(sp, "icp_match"),
-    sales_status: spGet(sp, "sales_status"),
-    action: spGet(sp, "action"),
-    lead_status: spGet(sp, "lead_status"),
     industry: spGet(sp, "industry"),
     sort: spGet(sp, "sort") || "priority",
-    order: spGet(sp, "order") || "asc",
+    order: spGet(sp, "order") || "desc",
   };
 }
 
@@ -55,10 +49,45 @@ export function LeadFiltersForm({
       <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-slate-800 [&::-webkit-details-marker]:hidden">
         <span className="inline-flex items-center gap-2">
           <span aria-hidden>▸</span>
-          Filters &amp; sorting
+          Filter leads
         </span>
       </summary>
       <div className="space-y-4 border-t border-slate-200 p-4">
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/leads"
+            className={`rounded-full border px-3 py-1.5 text-sm font-medium ${
+              !v.icp_match
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-slate-200 text-slate-600 hover:bg-slate-50"
+            }`}
+          >
+            All
+          </Link>
+          {(["high", "medium", "low"] as const).map((level) => {
+            const params = new URLSearchParams();
+            for (const h of preserve) params.set(h.name, h.value);
+            if (v.q) params.set("q", v.q);
+            if (v.industry) params.set("industry", v.industry);
+            params.set("icp_match", level);
+            params.set("sort", v.sort || "priority");
+            params.set("order", v.order || "desc");
+            return (
+              <Link
+                key={level}
+                href={`/leads?${params.toString()}`}
+                className={`rounded-full border px-3 py-1.5 text-sm font-medium capitalize ${
+                  v.icp_match === level
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                {level}
+              </Link>
+            );
+          })}
+        </div>
+
         <form method="get" action="/leads" className="space-y-4">
           {preserve.map((h) => (
             <input key={h.name} type="hidden" name={h.name} value={h.value} />
@@ -78,55 +107,16 @@ export function LeadFiltersForm({
           </label>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label className="block text-xs font-medium text-slate-600">
-              ICP match
+              ICP Priority
               <select
                 name="icp_match"
                 defaultValue={v.icp_match}
                 className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-900"
               >
-                <option value="">any</option>
-                <option value="high">high</option>
-                <option value="medium">medium</option>
-                <option value="low">low</option>
-              </select>
-            </label>
-            <label className="block text-xs font-medium text-slate-600">
-              Sales status
-              <select
-                name="sales_status"
-                defaultValue={v.sales_status}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-900"
-              >
-                <option value="">any</option>
-                <option value="qualified">qualified</option>
-                <option value="partial_data">partial_data</option>
-                <option value="needs_manual_review">needs_manual_review</option>
-              </select>
-            </label>
-            <label className="block text-xs font-medium text-slate-600">
-              Action
-              <select
-                name="action"
-                defaultValue={v.action}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-900"
-              >
-                <option value="">any</option>
-                <option value="Contact">Contact</option>
-                <option value="Research first">Research first</option>
-                <option value="Ignore">Ignore</option>
-              </select>
-            </label>
-            <label className="block text-xs font-medium text-slate-600">
-              Lead status
-              <select
-                name="lead_status"
-                defaultValue={v.lead_status}
-                className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-900"
-              >
-                <option value="">any</option>
-                <option value="new">new</option>
-                <option value="needs_review">needs_review</option>
-                <option value="discarded">discarded</option>
+                <option value="">All</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
               </select>
             </label>
             <label className="block text-xs font-medium text-slate-600">
@@ -151,8 +141,7 @@ export function LeadFiltersForm({
                 defaultValue={v.sort}
                 className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-900"
               >
-                <option value="priority">priority score</option>
-                <option value="action">action (Contact first)</option>
+                <option value="priority">ICP Priority</option>
                 <option value="company">company</option>
                 <option value="completeness">data completeness</option>
                 <option value="confidence">confidence</option>
@@ -165,8 +154,8 @@ export function LeadFiltersForm({
                 defaultValue={v.order === "desc" ? "desc" : "asc"}
                 className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-900"
               >
-                <option value="asc">ascending</option>
                 <option value="desc">descending</option>
+                <option value="asc">ascending</option>
               </select>
             </label>
           </div>

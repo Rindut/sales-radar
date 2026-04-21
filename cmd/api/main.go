@@ -13,10 +13,14 @@ import (
 	"path/filepath"
 
 	"salesradar/internal/api"
+	"salesradar/internal/appenv"
 	"salesradar/internal/store"
 )
 
 func main() {
+	appenv.Load()
+	log.Printf("Apollo key exists: %t", os.Getenv("APOLLO_API_KEY") != "")
+
 	addr := flag.String("addr", ":8080", "HTTP listen address")
 	dbPath := flag.String("db", "data/salesradar.db", "SQLite database file path")
 	cors := flag.String("cors", "", "Comma-separated allowed browser Origins (Access-Control-Allow-Origin). Use * for any origin (dev only). Default includes sales host + localhost:3000.")

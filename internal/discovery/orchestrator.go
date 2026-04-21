@@ -11,12 +11,16 @@ import (
 	"strings"
 	"sync"
 
+	"salesradar/internal/apollo"
 	"salesradar/internal/domain"
 	"salesradar/internal/googlesearch"
 )
 
 // ErrGoogleNotConfigured is returned when Google CSE credentials are missing.
 var ErrGoogleNotConfigured = errors.New("google custom search API not configured")
+
+// ErrApolloNotConfigured is returned when Apollo credentials are missing.
+var ErrApolloNotConfigured = errors.New("apollo API not configured")
 
 // DiscoverySource is the PRD contract for a registered discovery module.
 type DiscoverySource interface {
@@ -66,6 +70,17 @@ func (g googleDiscoverySource) Run(ctx context.Context, p domain.RunParams) ([]d
 	return discoverLive(ctx, g.cfg, p, g.toggles)
 }
 
+type apolloDiscoverySource struct{}
+
+func (apolloDiscoverySource) Name() string { return sourceApollo }
+
+func (apolloDiscoverySource) Run(ctx context.Context, p domain.RunParams) ([]domain.RawCandidate, error) {
+	if strings.TrimSpace(apollo.APIKeyFromEnv()) == "" {
+		return nil, ErrApolloNotConfigured
+	}
+	return discoverApollo(ctx, p)
+}
+
 // --- Pool-dependent sources (phase 2) ---
 
 type jobPoolSource struct {
@@ -105,10 +120,19 @@ func runSourcesParallel(ctx context.Context, sources []DiscoverySource, p domain
 
 	for _, r := range results {
 		st := ProviderStatus{ProviderName: r.name}
+		if r.name == sourceApollo {
+			st.ProviderLabel = "Apollo"
+		}
 		switch {
 		case r.err != nil:
 			if errors.Is(r.err, ErrGoogleNotConfigured) {
 				st.State = ProviderNotConfigured
+				st.SkipReason = "missing API key"
+				st.ReasonCode = "provider_not_configured"
+				st.ReasonMessage = "Provider is enabled but API key is missing."
+			} else if errors.Is(r.err, ErrApolloNotConfigured) {
+				st.State = ProviderNotConfigured
+				st.Configured = boolPtr(false)
 				st.SkipReason = "missing API key"
 				st.ReasonCode = "provider_not_configured"
 				st.ReasonMessage = "Provider is enabled but API key is missing."
@@ -124,9 +148,18 @@ func runSourcesParallel(ctx context.Context, sources []DiscoverySource, p domain
 			st.ReasonCode = "no_output"
 			st.ReasonMessage = "Provider executed but produced no output."
 			st.LastError = emptyOutputReason(r.name)
+			st.CandidatesTotal = 0
 			statuses = append(statuses, st)
 		default:
 			st.State = ProviderSuccess
+			if r.name == sourceApollo {
+				st.Configured = boolPtr(true)
+			}
+			st.CandidatesTotal = len(r.out)
+			st.CandidatesSuccess = len(r.out)
+			st.Details = map[string]any{
+				"raw_candidates": len(r.out),
+			}
 			statuses = append(statuses, st)
 			for i := range r.out {
 				c := &r.out[i]
@@ -196,6 +229,8 @@ func emptyOutputReason(source string) string {
 		return "no website-qualified candidates emitted"
 	case sourceJob:
 		return "no job-signal candidates emitted"
+	case sourceApollo:
+		return "no Apollo organizations returned"
 	default:
 		return ""
 	}
@@ -237,6 +272,11 @@ func buildPhase1SourcesWithSkips(mode string, googleCfg googlesearch.Config, t d
 		} else {
 			disabled(sourceGoogle)
 		}
+		if t.Apollo {
+			sources = append(sources, apolloDiscoverySource{})
+		} else {
+			disabled(sourceApollo)
+		}
 	default:
 		if t.Seed {
 			sources = append(sources, seedDiscoverySource{})
@@ -247,6 +287,11 @@ func buildPhase1SourcesWithSkips(mode string, googleCfg googlesearch.Config, t d
 			sources = append(sources, googleDiscoverySource{cfg: googleCfg, toggles: t})
 		} else {
 			disabled(sourceGoogle)
+		}
+		if t.Apollo {
+			sources = append(sources, apolloDiscoverySource{})
+		} else {
+			disabled(sourceApollo)
 		}
 	}
 	return sources, skipped
